@@ -1,0 +1,3 @@
+google-genai
+html2image
+python-dotenv
