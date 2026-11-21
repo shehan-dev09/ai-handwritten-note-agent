@@ -10,28 +10,28 @@ from trend_agent import get_working_models, get_genai_client
 load_dotenv()
 
 # =====================================================================
-# 1. Multi-Template Theme Definitions
+# 1. Multi-Template Theme Definitions (Synced with UI Preview Cards)
 # =====================================================================
 NOTE_TEMPLATES: Dict[str, Dict[str, Any]] = {
     "classic_cream": {
-        "name": "Classic Cream Notebook",
-        "badge": "Warm Ruled Paper",
-        "description": "Cream ruled notebook with spiral holes, red margin line & marker highlights.",
-        "paper_bg": "#FDFBF7",
-        "line_css": "repeating-linear-gradient(transparent, transparent 37px, #E2E8F0 37px, #E2E8F0 38px)",
-        "bg_size": "100% 38px",
-        "margin_line": "3px double #FCA5A5",
+        "name": "Classic Cream",
+        "badge": "Warm Dot-Grid",
+        "description": "Warm cream dot-grid notebook with red margin line, yellow marker highlights, and spiral holes.",
+        "paper_bg": "#FAF6EE",
+        "line_css": "radial-gradient(#D6D1C7 1.5px, transparent 1.5px)",
+        "bg_size": "26px 26px",
+        "margin_line": "3px double #F87171",
         "text_color": "#1E293B",
         "sub_text_color": "#475569",
         "title_color": "#0F172A",
         "accent_color": "#2563EB",
-        "secondary_accent": "#EA580C",
-        "highlight_bg": "rgba(253, 224, 71, 0.60)",
+        "secondary_accent": "#DC2626",
+        "highlight_bg": "rgba(253, 224, 71, 0.72)",
         "box_bg": "#FFFFFF",
         "box_border": "#1E293B",
         "step_bg": "#F8FAFC",
         "pro_tip_bg": "#FEF9C3",
-        "pro_tip_border": "#EAB308",
+        "pro_tip_border": "#D97706",
         "pro_tip_text": "#713F12",
         "show_holes": True,
         "cornell_layout": False,
@@ -39,72 +39,72 @@ NOTE_TEMPLATES: Dict[str, Dict[str, Any]] = {
     "dark_neon": {
         "name": "Obsidian Dark",
         "badge": "Dark Dot-Grid",
-        "description": "Deep slate iPad canvas with subtle dot-grid and glowing cyan & violet ink.",
+        "description": "Deep obsidian slate canvas with subtle dot-grid, emerald and sky-blue accents.",
         "paper_bg": "#0F172A",
         "line_css": "radial-gradient(#334155 1.5px, transparent 1.5px)",
-        "bg_size": "28px 28px",
-        "margin_line": "2px solid #334155",
+        "bg_size": "26px 26px",
+        "margin_line": "2px solid #10B981",
         "text_color": "#F1F5F9",
         "sub_text_color": "#94A3B8",
-        "title_color": "#38BDF8",
+        "title_color": "#F8FAFC",
         "accent_color": "#38BDF8",
-        "secondary_accent": "#C084FC",
-        "highlight_bg": "rgba(56, 189, 248, 0.25)",
+        "secondary_accent": "#22C55E",
+        "highlight_bg": "rgba(6, 78, 59, 0.85)",
         "box_bg": "#1E293B",
-        "box_border": "#38BDF8",
+        "box_border": "#22C55E",
         "step_bg": "#0F172A",
-        "pro_tip_bg": "#1E1B4B",
-        "pro_tip_border": "#A855F7",
-        "pro_tip_text": "#E9D5FF",
+        "pro_tip_bg": "#052E16",
+        "pro_tip_border": "#22C55E",
+        "pro_tip_text": "#DCFCE7",
         "show_holes": False,
         "cornell_layout": False,
     },
     "blueprint_grid": {
         "name": "Blueprint Grid",
-        "badge": "5mm Square Grid",
-        "description": "Crisp white engineering graph paper with cobalt blue ink and teal accents.",
-        "paper_bg": "#F8FAFC",
+        "badge": "Engineering Graph",
+        "description": "Crisp engineering graph paper with cobalt blue ink and orange structural callouts.",
+        "paper_bg": "#F2F8FF",
         "line_css": (
-            "linear-gradient(to right, #E2E8F0 1px, transparent 1px), "
-            "linear-gradient(to bottom, #E2E8F0 1px, transparent 1px)"
+            "linear-gradient(to right, #DCEBFA 1px, transparent 1px), "
+            "linear-gradient(to bottom, #DCEBFA 1px, transparent 1px)"
         ),
-        "bg_size": "28px 28px",
-        "margin_line": "2px solid #93C5FD",
+        "bg_size": "26px 26px",
+        "margin_line": "2px solid #60A5FA",
         "text_color": "#0F172A",
-        "sub_text_color": "#475569",
-        "title_color": "#1D4ED8",
+        "sub_text_color": "#334155",
+        "title_color": "#0369A1",
         "accent_color": "#0284C7",
-        "secondary_accent": "#0D9488",
-        "highlight_bg": "rgba(125, 211, 252, 0.45)",
+        "secondary_accent": "#EA580C",
+        "highlight_bg": "rgba(186, 230, 253, 0.75)",
         "box_bg": "#FFFFFF",
-        "box_border": "#1D4ED8",
+        "box_border": "#0284C7",
         "step_bg": "#F0F9FF",
-        "pro_tip_bg": "#CCFBF1",
-        "pro_tip_border": "#0D9488",
-        "pro_tip_text": "#134E4A",
+        "pro_tip_bg": "#FFF7ED",
+        "pro_tip_border": "#EA580C",
+        "pro_tip_text": "#9A3412",
         "show_holes": False,
         "cornell_layout": False,
     },
     "cornell_academic": {
         "name": "Cornell Exam",
-        "badge": "Exam Revision Sheet",
-        "description": "Structured academic paper with top header bar, emerald ink, and summary block.",
-        "paper_bg": "#FFFDF9",
+        "badge": "Ruled Ivory Sheet",
+        "description": "Structured academic ruled ivory paper with violet ink and crimson exam blocks.",
+        "paper_bg": "#FCFBF9",
         "line_css": "repeating-linear-gradient(transparent, transparent 37px, #E7E5E4 37px, #E7E5E4 38px)",
         "bg_size": "100% 38px",
-        "margin_line": "3px solid #10B981",
+        "margin_line": "3px solid #A855F7",
         "text_color": "#1C1917",
         "sub_text_color": "#57534E",
-        "title_color": "#065F46",
-        "accent_color": "#059669",
-        "secondary_accent": "#D97706",
-        "highlight_bg": "rgba(110, 231, 183, 0.45)",
+        "title_color": "#3B0764",
+        "accent_color": "#7E22CE",
+        "secondary_accent": "#BE123C",
+        "highlight_bg": "rgba(233, 213, 255, 0.70)",
         "box_bg": "#FFFFFF",
-        "box_border": "#065F46",
-        "step_bg": "#ECFDF5",
-        "pro_tip_bg": "#FEF3C7",
-        "pro_tip_border": "#D97706",
-        "pro_tip_text": "#78350F",
+        "box_border": "#581C87",
+        "step_bg": "#FAF5FF",
+        "pro_tip_bg": "#FFF1F2",
+        "pro_tip_border": "#BE123C",
+        "pro_tip_text": "#881337",
         "show_holes": False,
         "cornell_layout": True,
     },
@@ -549,6 +549,7 @@ def _get_template_css(t: Dict[str, Any]) -> str:
             padding: 1px 7px;
             border-radius: 5px;
             font-weight: 700;
+            color: {t["text_color"]};
             box-decoration-break: clone;
             -webkit-box-decoration-break: clone;
         }}
@@ -728,7 +729,7 @@ def _build_page_inner_html(
                 <div class="niw-topic-pill">TOPIC // {topic[:62]}</div>
                 <div class="niw-page-badge">Page {page.page_number} / {total_pages}</div>
             </div>
-            <div class="niw-title">{page.title}</div>
+            <div class="niw-title">{page.page_number:02d} // {page.title}</div>
             <div class="niw-subtitle">{_format_highlight(page.subtitle)}</div>
             <div class="niw-points-list">
                 {bullets_html}
@@ -744,7 +745,7 @@ def _build_page_inner_html(
 
         <div class="niw-bottom-section">
             <div class="niw-pro-tip-box">
-                <div class="niw-tip-badge">NOTE</div>
+                <div class="niw-tip-badge">CORE</div>
                 <div class="niw-pro-tip-text"><strong>Key Takeaway:</strong> {_format_highlight(page.pro_tip)}</div>
             </div>
             <div class="niw-footer">
@@ -832,7 +833,6 @@ def build_interactive_studio_html(
             padding: 4px 2px 20px 2px;
         }}
 
-        /* Top Action Bar */
         .studio-bar {{
             background: #FFFFFF;
             border: 1px solid rgba(20, 20, 19, 0.09);
@@ -908,7 +908,6 @@ def build_interactive_studio_html(
             background: #EAE8E1;
         }}
 
-        /* Horizontal Thumbnail Strip */
         .studio-thumb-strip {{
             display: flex;
             gap: 12px;
@@ -977,7 +976,6 @@ def build_interactive_studio_html(
             pointer-events: none;
         }}
 
-        /* Main Split Layout: Reader + Social Caption */
         .studio-main-grid {{
             display: grid;
             grid-template-columns: 520px 1fr;
@@ -990,7 +988,6 @@ def build_interactive_studio_html(
             }}
         }}
 
-        /* Left Column: High-Res Slide Inspector */
         .inspector-card {{
             background: #FFFFFF;
             border: 1px solid rgba(20, 20, 19, 0.09);
@@ -1041,7 +1038,6 @@ def build_interactive_studio_html(
             height: 1250px;
         }}
 
-        /* Right Column: Social Post Studio */
         .caption-card {{
             background: #FFFFFF;
             border: 1px solid rgba(20, 20, 19, 0.09);
@@ -1094,7 +1090,6 @@ def build_interactive_studio_html(
     </head>
     <body>
 
-        <!-- Top Action Bar -->
         <div class="studio-bar">
             <div class="studio-bar-left">
                 <span class="studio-badge-green">LIVE RENDER</span>
@@ -1112,12 +1107,10 @@ def build_interactive_studio_html(
             </div>
         </div>
 
-        <!-- Thumbnail Strip -->
         <div class="studio-thumb-strip">
             {thumbs_html}
         </div>
 
-        <!-- Split Inspector & Social Post Studio -->
         <div class="studio-main-grid">
             <div class="inspector-card">
                 <div class="inspector-toolbar">
@@ -1264,4 +1257,5 @@ def build_interactive_studio_html(
             }}
         </script>
     </body>
-    </html>"""
+    </html>
+    """
