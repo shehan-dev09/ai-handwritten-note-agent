@@ -787,7 +787,7 @@ st.markdown(
     </div>
     <div class="hero">
         <div>
-            <span class="section-label">Typographic Glass // Green x Black Edition</span>
+            <span class="section-label">Agent Online</span>
             <div class="hero-title">Turn any concept into a <span class="outline">carousel.</span></div>
         </div>
         <p class="hero-sub">Pick an AI/ML topic, select your language mode, and synthesize five export-ready handwritten study slides with social copy.</p>
