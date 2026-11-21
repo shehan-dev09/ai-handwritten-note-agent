@@ -36,7 +36,7 @@ if not os.path.exists(config_path) or open(config_path, "r", encoding="utf-8").r
 # PAGE CONFIGURATION
 # =====================================================================
 st.set_page_config(
-    page_title="Genesis Note Studio",
+    page_title="SN Note Studio",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
