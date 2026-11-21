@@ -4,7 +4,7 @@
 
 **An end-to-end Multi-Agent AI system that autonomously discovers trending AI/ML breakthroughs, synthesizes a 5-page curriculum, renders realistic handwritten study carousels, and writes human-like social media launch copy.**
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)]([[[https://ai-handwritten-note-agent.streamlit.app/])
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-handwritten-note-agent.streamlit.app/)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-00FF88?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Gemini 3.x SDK](https://img.shields.io/badge/Google%20GenAI-Gemini%203.x-00FF88?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2%20Structured%20Outputs-B6FF3C?style=flat-square)](https://docs.pydantic.dev/)
