@@ -38,7 +38,6 @@ def format_subject_label(subject_name: str) -> str:
     subject_meta = UNIVERSITY_SUBJECTS.get(subject_name, {})
     code = subject_meta.get("code")
     if not code:
-        # Fallback if an older dictionary structure is cached in memory
         words = [w for w in subject_name.replace("&", " ").split() if w]
         code = "".join(w[0].upper() for w in words[:3]) or "UNI"
     return f"[{code}]  {subject_name}"
@@ -648,11 +647,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Optional API key bar only if not configured in secrets/.env
 if not env_gemini_key:
     with st.expander("Configure Free Gemini API Key", expanded=True):
         user_key = st.text_input(
-            "Enter your Google AI Studio API Key (`AIzaSy...`)",
+            "Enter your Google AI Studio API Key (AIzaSy...)",
             type="password",
             placeholder="AIzaSy...",
         )
@@ -722,7 +720,6 @@ with left_col:
                         st.session_state["selected_topic"] = live_topics[0].title
                     st.rerun()
 
-        # Render Ranked Topics (#01 - #05)
         topics = st.session_state.get("viral_topics", [])
         active_idx = st.session_state.get("selected_topic_idx", 0)
 
@@ -776,7 +773,6 @@ with left_col:
 
 
 with right_col:
-    # STEP 02: VISUAL TEMPLATE GALLERY (2x2 Grid with Unindented HTML Previews)
     with st.container(border=True):
         st.markdown(
             """
@@ -816,7 +812,6 @@ with right_col:
 
     st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
-    # STEP 03 & STEP 04: LANGUAGE BUTTONS + PAGE COUNT BUTTONS + GENERATE CTA
     with st.container(border=True):
         st.markdown(
             """
@@ -922,7 +917,7 @@ with right_col:
         )
 
 # ------------------------------------------------------------------
-# GENERATION PIPELINE (0ms Server Render Overhead)
+# GENERATION PIPELINE
 # ------------------------------------------------------------------
 if generate_clicked:
     topic_to_run = st.session_state.get("selected_topic", "").strip()
@@ -953,7 +948,7 @@ if generate_clicked:
                 st.error(f"Generation failed: {err}")
 
 # ------------------------------------------------------------------
-# INTERACTIVE LIVE HTML/CSS STUDIO (INSTANT PREVIEW & GPU EXPORT)
+# INTERACTIVE LIVE HTML/CSS STUDIO
 # ------------------------------------------------------------------
 if "generated_guide" in st.session_state:
     st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)

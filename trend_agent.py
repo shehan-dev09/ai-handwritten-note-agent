@@ -21,7 +21,6 @@ class ViralTopicsList(BaseModel):
     topics: List[ViralTopic]
 
 
-# University Subject Catalog with Pre-Ranked Instant Leaderboard Topics (Emoji-Free)
 UNIVERSITY_SUBJECTS: Dict[str, Dict] = {
     "AI & Machine Learning": {
         "code": "AI",
