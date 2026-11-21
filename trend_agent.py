@@ -330,7 +330,7 @@ def get_working_models(api_key: str) -> List[str]:
     except Exception:
         return preferred_order
 
-     prioritized = [m for m in preferred_order if m in available]
+    prioritized = [m for m in preferred_order if m in available]
     for m in available:
         if "flash" in m and m not in prioritized:
             prioritized.append(m)
