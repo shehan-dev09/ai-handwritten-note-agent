@@ -776,7 +776,7 @@ st.markdown(
     <div class="studio-navbar">
         <div class="nav-brand">
             <div class="brand-mark"></div>
-            <span class="brand-title">Genesis Note Studio</span>
+            <span class="brand-title">SN Note Studio</span>
             <span class="brand-divider">/</span>
             <span class="brand-sub">Autonomous AI/ML Sketchnote &amp; Copy Engine</span>
         </div>
