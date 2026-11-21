@@ -1,4 +1,6 @@
 import os
+import base64
+from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 from dotenv import load_dotenv
@@ -17,8 +19,17 @@ from note_generator import (
 
 load_dotenv()
 
+_APP_LOGO_PATH = Path(__file__).resolve().parent / "assets" / "app_logo.png"
+_LOGO_B64 = ""
+if _APP_LOGO_PATH.exists():
+    try:
+        _LOGO_B64 = base64.b64encode(_APP_LOGO_PATH.read_bytes()).decode()
+    except Exception:
+        _LOGO_B64 = ""
+
 st.set_page_config(
     page_title="NIWNOTES — University Sketchnote & Social Learning Studio",
+    page_icon=str(_APP_LOGO_PATH) if _APP_LOGO_PATH.exists() else "📝",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -108,19 +119,23 @@ st.markdown(
         gap: 12px;
     }
     .woday-logo-mark {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: var(--text-primary);
-        color: #FFFFFF;
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        background: #000000;
+        border: 1px solid rgba(255, 255, 255, 0.2);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-weight: 800;
-        font-size: 1.05rem;
-        letter-spacing: -0.03em;
+        overflow: hidden;
         flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    .woday-logo-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
     }
     .woday-brand-name {
         font-family: 'Plus Jakarta Sans', sans-serif;
@@ -548,7 +563,6 @@ def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
             "hi_ink": "#713F12",
             "box_bg": "#FEF08A",
             "box_border": "#EAB308",
-            "hole": True,
         },
         "vintage_kraft": {
             "name": "Quad Grid Pad",
@@ -565,7 +579,6 @@ def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
             "hi_ink": "#451A03",
             "box_bg": "#FFFBEB",
             "box_border": "#B45309",
-            "hole": False,
         },
         "digital_ipad": {
             "name": "iPad GoodNotes",
@@ -583,7 +596,6 @@ def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
             "box_bg": "#FFFFFF",
             "box_border": "#CBD5E1",
             "pill_bg": "#F1F5F9",
-            "hole": False,
         },
         "digital_dark": {
             "name": "Cyber Dark",
@@ -601,7 +613,6 @@ def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
             "box_bg": "#111827",
             "box_border": "rgba(56, 189, 248, 0.4)",
             "pill_bg": "#1E293B",
-            "hole": False,
         },
     }
 
@@ -611,28 +622,20 @@ def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
     badge_txt = "ACTIVE" if is_active else "SELECT"
     bg_size = f"background-size:{t['grid_size']};" if "grid_size" in t else ""
 
-    hole_html = (
-        '<div style="position:absolute;left:4px;top:20px;width:7px;height:7px;border-radius:50%;background:#D1D5DB;box-shadow:inset 1px 1px 2px rgba(0,0,0,0.4);"></div>'
-        '<div style="position:absolute;left:4px;top:60px;width:7px;height:7px;border-radius:50%;background:#D1D5DB;box-shadow:inset 1px 1px 2px rgba(0,0,0,0.4);"></div>'
-        '<div style="position:absolute;left:4px;top:100px;width:7px;height:7px;border-radius:50%;background:#D1D5DB;box-shadow:inset 1px 1px 2px rgba(0,0,0,0.4);"></div>'
-        if t.get("hole")
-        else ""
-    )
-
     if t.get("type_tag") == "REALISTIC":
         # Pure physical handwritten paper preview: text on lines with highlighter and sticky note
         content_doodle = (
             f'<div style="margin: 4px 0 0 0; display: flex; flex-direction: column; gap: 4px;">'
             f'<div style="display: flex; align-items: baseline; gap: 5px;">'
-            f'<span style="font-size: 8.5px; font-weight: 800; color: {t["accent"]};">01.</span>'
-            f'<span style="font-size: 8px; color: {t["ink"]}; font-weight: 600;">Main note written on paper lines</span>'
+            f'<span style="font-size: 8.5px; font-weight: 800; color: {t["accent"]};">&#8212; 01.</span>'
+            f'<span style="font-size: 8px; color: {t["ink"]}; font-weight: 600;">Main lecture notes on paper</span>'
             f'</div>'
             f'<div style="display: flex; align-items: baseline; gap: 5px;">'
-            f'<span style="font-size: 8.5px; font-weight: 800; color: {t["accent"]};">02.</span>'
+            f'<span style="font-size: 8.5px; font-weight: 800; color: {t["accent"]};">&#8212; 02.</span>'
             f'<span style="background: {t["hi_bg"]}; color: {t["hi_ink"]}; font-size: 7.5px; font-weight: 700; padding: 1px 4px; border-radius: 2px;">Highlighted Key Formula</span>'
             f'</div>'
-            f'<div style="background: {t["box_bg"]}; border: 1px dashed {t["accent"]}; border-radius: 4px; padding: 2px 4px; font-size: 7.5px; font-weight: 700; color: {t["ink"]};">'
-            f'📌 Post-It / Taped Pro-Tip Note'
+            f'<div style="background: {t["box_bg"]}; border: 1px dashed {t["accent"]}; border-radius: 4px; padding: 2px 5px; font-size: 7.5px; font-weight: 700; color: {t["ink"]};">'
+            f'✦ Taped Revision Sticky Note'
             f'</div>'
             f'</div>'
         )
@@ -648,9 +651,8 @@ def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
 
     return (
         f'<div class="{shell_cls}">'
-        f'<div style="background-color:{t["bg"]};background-image:{t["grid"]};{bg_size}border-radius:10px;padding:9px 10px 9px 20px;position:relative;border:1px solid rgba(20,20,19,0.12);height:130px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;font-family:\'Plus Jakarta Sans\',sans-serif;">'
-        f'{hole_html}'
-        f'<div style="position:absolute;left:15px;top:0;bottom:0;width:1.5px;background:{t["margin"]};"></div>'
+        f'<div style="background-color:{t["bg"]};background-image:{t["grid"]};{bg_size}border-radius:10px;padding:9px 10px 9px 18px;position:relative;border:1px solid rgba(20,20,19,0.12);height:130px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;font-family:\'Plus Jakarta Sans\',sans-serif;">'
+        f'<div style="position:absolute;left:13px;top:0;bottom:0;width:1.5px;background:{t["margin"]};"></div>'
         f'<div>'
         f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
         f'<span style="font-size:8.5px;font-weight:800;color:{t["accent"]};letter-spacing:0.03em;">NIWNOTES</span>'
@@ -707,32 +709,35 @@ env_gemini_key = get_secret_or_env("GEMINI_API_KEY")
 # TOP NAVIGATION BAR & HERO HEADER
 # ------------------------------------------------------------------
 api_badge_html = (
-    '<span class="woday-pill woday-pill-live">Engine Ready</span>'
+    '<span class="woday-pill woday-pill-live">Engine Running</span>'
     if env_gemini_key
     else '<span class="woday-pill">API Key Needed</span>'
+)
+
+logo_html = (
+    f'<img src="data:image/png;base64,{_LOGO_B64}" alt="NIWNOTES Logo" class="woday-logo-img" />'
+    if _LOGO_B64
+    else 'N'
 )
 
 st.markdown(
     f"""
 <div class="woday-nav">
     <div class="woday-brand">
-        <div class="woday-logo-mark">N</div>
+        <div class="woday-logo-mark">{logo_html}</div>
         <span class="woday-brand-name">NIWNOTES</span>
-        <span class="woday-brand-tag">University Handwritten Study Studio</span>
+        <span class="woday-brand-tag">Intelligent Handwritten Study Studio</span>
     </div>
     <div class="woday-nav-pills">
-        <span class="woday-pill">8 University Tracks</span>
-        <span class="woday-pill">2 Paper + 2 Digital Styles</span>
-        <span class="woday-pill">Instant GPU Export</span>
         {api_badge_html}
     </div>
 </div>
 
 <div class="woday-hero">
-    <div class="woday-eyebrow"><span>NIWNOTES 3.5</span> Authentic Human Handwriting Studio</div>
-    <h1 class="woday-title">Turn complex lectures into authentic handwritten study decks.</h1>
+    <div class="woday-eyebrow"><span>AI NOTE AGENT</span> Intelligent Handwritten Lecture Studio</div>
+    <h1 class="woday-title">Turn Trending Topics into authentic handwritten kuppi notes.</h1>
     <p class="woday-subtitle">
-        Pick your university subject, select a top-ranked topic or type a custom lecture, and synthesize a genuine pen-and-paper handwritten carousel with ready-to-post LinkedIn & Facebook captions.
+        Synthesize rich, human-like handwritten study carousels in Sinhala (සිංහල අකුරු) &amp; English from trending tech topics &amp; syllabus concepts — complete with organic sketches, exam recall tips, key terminology deep dives, and ready-to-share social captions.
     </p>
 </div>
 """,
@@ -893,8 +898,9 @@ with right_col:
                     render_template_mini_preview(tpl_key, is_tpl_active),
                     unsafe_allow_html=True,
                 )
+                btn_label = f"✓ {tpl_short_name} (Active)" if is_tpl_active else f"Select {tpl_short_name}"
                 if st.button(
-                    f"Use {tpl_short_name}",
+                    btn_label,
                     key=f"tpl_btn_{tpl_key}",
                     type="primary" if is_tpl_active else "secondary",
                     use_container_width=True,
