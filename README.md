@@ -23,9 +23,11 @@ Creating high-retention technical carousels for LinkedIn and Facebook typically 
 
 **NIWNote Studio** automates this entire workflow at **$0 cost** using a multi-agent pipeline:
 1. **Live Trend Discovery Agent (`trend_agent.py`):** Queries **HuggingFace Daily Papers** and **HackerNews Algolia APIs** in real time to identify high-velocity AI/ML topics.
-2. **Curriculum & Copywriter Agent (`note_generator.py`):** Uses **Google Gemini 3.x Flash** models with strict **Pydantic v2** schema validation to transform complex concepts into a cohesive **5-page progressive study guide** plus an authentic, human-toned social media caption.
-3. **Zero-Drift Handwritten Sketchnote Renderer (`note_generator.py`):** Compiles structured JSON into a custom **Dot-Grid Notebook Canvas** with inline SVG hand-drawn markers, red ink box callouts, and flowcharts, rendered at `1000x1250px` (4:5 portrait aspect ratio) via Headless Chromium.
-4. **Typographic Glassmorphism Web Studio (`app.py`):** A responsive, two-pane dark studio interface (**Green x Black Edition**) featuring live trend scanning, a 5-slide carousel grid, a high-res slide inspector, one-click copyable captions, and instant `.ZIP` bundle export.
+2. **Curriculum & Copywriter Agent (`note_generator.py`):** Uses **Google Gemini 3.x Flash** models with strict **Pydantic v2** schema validation to transform complex concepts into a cohesive **5, 10, or 30-page study guide** plus an authentic, human-toned social media caption.
+3. **Authentic Human Handwritten Sketchnote Studio (`note_generator.py`):** Embeds true **Sinhala + English handwriting fonts** (`FontoshanHandwrite`, `Caveat`, `Kalam`, `Maname`, `Yaldevi`) with inline SVG doodles, authentic marker highlighters, binder punch holes, scotch tape, and organic flow arrows across 4 curated styles:
+   - **2 Realistic Styles:** *Classic Ruled Notebook* (loose-leaf college paper, 3-ring binder punch holes, red margin line, ballpoint pen ink) and *Vintage Kraft Journal* (recycled brown paper, sepia graph grid, burnt orange ink, scotch-taped notes).
+   - **2 Digital Styles:** *iPad GoodNotes* (clean Apple Pencil tablet canvas with status bar and electric blue stylus ink) and *Notability Cyber Dark* (AMOLED slate with neon cyan & emerald glowing stylus ink).
+4. **Daylight macOS Responsive Studio (`app.py`):** A fully responsive UI optimized for Desktop, Tablet, and Mobile devices with live trend scanning, miniature visual previews, interactive touch-swipe slide inspector, one-click copyable captions, and GPU-accelerated client-side `.PNG` and `.ZIP` bundle export.
 
 ---
 
@@ -99,14 +101,15 @@ Built with a custom responsive design system featuring an obsidian grid canvas (
 ```text
 AI_Note_Agent/
 ├── .streamlit/
-│   └── config.toml          # Studio dark theme configuration (#00FF88 / #020504)
+│   └── config.toml          # Studio configuration
 ├── assets/
+│   ├── FontoshanHandwrite-Regular.ttf # Authentic Sinhala + English handwriting font
 │   ├── note_page_1.png      # Sample rendered sketchnote slide 1
 │   └── note_page_2.png      # Sample rendered sketchnote slide 2
-├── app.py                   # Two-pane Streamlit Web Studio application
+├── app.py                   # Responsive Streamlit Web Studio application (Desktop / Tablet / Mobile)
 ├── main.py                  # Interactive CLI orchestrator
-├── note_generator.py        # Gemini 3.x curriculum agent + HTML/SVG-to-PNG renderer
-├── trend_agent.py           # HuggingFace & HackerNews viral topic discovery agent
+├── note_generator.py        # Gemini 3.x curriculum agent + 4 Handcrafted Templates & Client-Side GPU Renderer
+├── trend_agent.py           # Multi-track university topic discovery & signal ranking agent
 ├── packages.txt             # Linux system dependencies (chromium, fonts-noto-core)
 ├── requirements.txt         # Python package dependencies
 └── README.md                # Project documentation

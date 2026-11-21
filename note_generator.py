@@ -2,6 +2,7 @@ import os
 import re
 import time
 import html
+import base64
 from typing import Dict, List, Optional, Any
 from concurrent.futures import ThreadPoolExecutor
 from pydantic import BaseModel, Field
@@ -14,7 +15,24 @@ load_dotenv()
 
 
 # =====================================================================
-# 1. STRUCTURED PYDANTIC SCHEMAS FOR GEMINI
+# 1. EMBEDDED AUTHENTIC HANDWRITING FONT (SINHALA + ENGLISH)
+# =====================================================================
+FONT_FILE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "assets",
+    "FontoshanHandwrite-Regular.ttf",
+)
+_FONT_B64 = ""
+if os.path.exists(FONT_FILE_PATH):
+    try:
+        with open(FONT_FILE_PATH, "rb") as _f:
+            _FONT_B64 = base64.b64encode(_f.read()).decode("ascii")
+    except Exception as _err:
+        print(f"Warning: Could not load Fontoshan font file: {_err}")
+
+
+# =====================================================================
+# 2. STRUCTURED PYDANTIC SCHEMAS FOR GEMINI
 # =====================================================================
 class DiagramStep(BaseModel):
     step_label: str = Field(
@@ -67,34 +85,50 @@ class StudyCarouselResponse(BaseModel):
 
 
 # =====================================================================
-# 2. HANDWRITTEN NOTEBOOK TEMPLATES
+# 3. HANDWRITTEN NOTEBOOK TEMPLATES (2 REALISTIC + 2 DIGITAL)
 # =====================================================================
 NOTE_TEMPLATES: Dict[str, Dict] = {
-    "classic_cream": {
-        "name": "Classic Cream Lined",
-        "short_name": "Classic Cream",
-        "badge": "Best Seller",
-        "desc": "Warm academic notebook paper with crimson margin and yellow highlighter.",
+    "classic_ruled": {
+        "name": "Classic Ruled Paper",
+        "short_name": "Ruled Notebook",
+        "category": "Realistic",
+        "badge": "Physical Paper",
+        "desc": "Authentic physical ruled paper: blue ruling lines, red margin, ballpoint pen ink, Post-It sticky note, zero digital UI boxes.",
     },
-    "dark_neon": {
-        "name": "Obsidian Cyber Dark",
-        "short_name": "Obsidian Dark",
-        "badge": "High Contrast",
-        "desc": "Deep slate dotted grid with cyan & emerald neon technical ink.",
+    "vintage_kraft": {
+        "name": "Engineering Quad Grid",
+        "short_name": "Quad Grid Pad",
+        "category": "Realistic",
+        "badge": "Physical Paper",
+        "desc": "Real engineering 5mm quad grid lecture pad with sepia ink, scotch-taped notes, and hand-drawn technical sketches.",
     },
-    "blueprint_grid": {
-        "name": "Engineering Blueprint",
-        "short_name": "Blueprint Grid",
-        "badge": "STEM Favorite",
-        "desc": "Crisp Cobalt architect graph paper with technical blue ink.",
+    "digital_ipad": {
+        "name": "iPad GoodNotes Stylus",
+        "short_name": "iPad GoodNotes",
+        "category": "Digital",
+        "badge": "Apple Pencil",
+        "desc": "Crisp modern tablet canvas with iPad status bar, modern tablet cards, electric stylus ink, and pastel highlighters.",
     },
-    "cornell_academic": {
-        "name": "Cornell Exam Prep",
-        "short_name": "Cornell Exam",
-        "badge": "Exam Ready",
-        "desc": "Structured ivory study sheet with royal purple accents.",
+    "digital_dark": {
+        "name": "Notability Cyber Dark",
+        "short_name": "Cyber Dark",
+        "category": "Digital",
+        "badge": "AMOLED Neon",
+        "desc": "Deep slate tablet canvas with glowing neon stylus ink and glassmorphism cards.",
     },
 }
+
+TEMPLATE_ALIASES = {
+    "classic_cream": "classic_ruled",
+    "blueprint_grid": "vintage_kraft",
+    "cornell_academic": "digital_ipad",
+    "dark_neon": "digital_dark",
+}
+
+
+def normalize_template_key(key: str) -> str:
+    """Normalizes template keys including legacy aliases."""
+    return TEMPLATE_ALIASES.get(key, key if key in NOTE_TEMPLATES else "classic_ruled")
 
 
 MODULE_OUTLINES = [
@@ -144,14 +178,14 @@ MODULE_OUTLINES = [
 
 
 # =====================================================================
-# 3. LANGUAGE INSTRUCTIONS & PARALLEL AI GENERATION
+# 4. LANGUAGE INSTRUCTIONS & PARALLEL AI GENERATION
 # =====================================================================
 def _build_language_instructions(language: str, include_caption: bool) -> str:
     if language == "Sinhala_Mix":
         caption_rule = (
             """
         SOCIAL MEDIA CAPTION RULES (MUST BE IN SINHALA + ENGLISH KUPPI MIX):
-        - Write the LinkedIn/Facebook `social_caption` in the exact same natural Sri Lankan University Sinhala + English mix.
+        - Write the LinkedIn/Facebook `social_caption` in natural Sri Lankan University Sinhala + English mix.
         - Structure:
           1. Strong Sinhala hook line about why this topic matters for IT/Engineering students.
           2. 3-4 short bullet points summarizing what is inside this note deck.
@@ -168,6 +202,7 @@ def _build_language_instructions(language: str, include_caption: bool) -> str:
         - NEVER translate standard English technical terms into awkward dictionary Sinhala. Keep words like `Architecture`, `Latency`, `Cache`, `Thread`, `Database`, `API`, `Model`, `Token`, `Vector`, `Packet`, `Cluster`, `Container`, `Pipeline`, `Gradient` in English script.
         - Keep `title`, `diagram_title`, and `diagram_steps.step_label` in crisp English.
         - GOOD SINHALA MIX EXAMPLE: "සරලවම කිව්වොත් **RAG Architecture** එකෙන් කරන්නේ LLM එකට උත්තරයක් හදන්න කලින් අපේ **Vector Database** එකෙන් හරියටම ගැලපෙන **Context** එක අරන් දෙන එකයි. මේකෙන් **Hallucinations** සෑහෙන්න අඩු කරගන්න පුළුවන්."
+        - Wrap 1-2 key technical terms in each bullet in **double asterisks** for realistic marker highlighting.
         - Do NOT use any emojis anywhere in the output.
         {caption_rule}
         """
@@ -188,6 +223,7 @@ def _build_language_instructions(language: str, include_caption: bool) -> str:
     return f"""
     LANGUAGE MODE: 100% PURE ACADEMIC & INDUSTRY ENGLISH.
     - Write every single field (`title`, `summary_banner`, `bullet_points`, `diagram_title`, `diagram_steps`, and `pro_tip`) in clear, concise, high-impact English suitable for top-tier university revision notes.
+    - Wrap 1-2 key technical terms in each bullet in **double asterisks** for realistic marker highlighting.
     - Do NOT use any emojis anywhere in the output.
     {caption_rule}
     """
@@ -225,7 +261,7 @@ def _generate_single_batch(
     2. Each slide MUST have:
        - `title`: Max 6 words (English).
        - `summary_banner`: Max 16 words.
-       - `bullet_points`: Exactly 3 bullet points, 12-18 words each. Wrap 1-2 key terms per bullet in **double asterisks** for yellow marker highlighting.
+       - `bullet_points`: Exactly 3 bullet points, 12-18 words each. Wrap 1-2 key terms per bullet in **double asterisks** for marker highlighting.
        - `diagram_title`: Short title for the 3-step visual flow.
        - `diagram_steps`: Exactly 3 steps (`step_label` max 2 words, `step_detail` max 5 words).
        - `pro_tip`: Max 18 words.
@@ -330,7 +366,7 @@ def generate_5_page_study_guide(
 
 
 # =====================================================================
-# 4. INSTANT BROWSER-NATIVE SKETCHNOTE STUDIO & CLIENT-SIDE GPU EXPORT
+# 5. INSTANT BROWSER-NATIVE SKETCHNOTE STUDIO & CLIENT-SIDE GPU EXPORT
 # =====================================================================
 def _format_inline_highlights(text: str) -> str:
     escaped = html.escape(str(text or ""))
@@ -380,37 +416,101 @@ def _build_slide_card_html(
     topic: str,
     subject_category: str,
     idx: int = 1,
+    template_key: str = "classic_ruled",
 ) -> str:
+    norm_key = normalize_template_key(template_key)
+    is_realistic = norm_key in ("classic_ruled", "vintage_kraft")
     fields = _extract_slide_fields(slide, idx)
+
+    # Bullet point rendering: In realistic mode, numbers are handwritten directly on paper lines
+    bullet_prefix = "0" if is_realistic else "0"
     bullets_html = "".join(
-        f'<li class="nc-bullet-item"><span class="nc-bullet-dot">0{i + 1}</span>'
-        f'<div class="nc-bullet-text">{_format_inline_highlights(b)}</div></li>'
+        f'<li class="nc-bullet-item">'
+        f'<span class="nc-bullet-dot">{bullet_prefix}{i + 1}.</span>'
+        f'<div class="nc-bullet-text">{_format_inline_highlights(b)}</div>'
+        f'</li>'
         for i, b in enumerate(fields["bullet_points"])
     )
 
-    steps_html = ""
+    steps_parts = []
     for i, (lbl, dtl) in enumerate(fields["diagram_steps"]):
-        steps_html += f"""
-        <div class="nc-step-card">
-            <div class="nc-step-badge">0{i + 1} {html.escape(str(lbl))}</div>
-            <div class="nc-step-detail">{_format_inline_highlights(dtl)}</div>
+        steps_parts.append(
+            f'<div class="nc-step-card">'
+            f'<div class="nc-step-badge">0{i + 1}  {html.escape(str(lbl))}</div>'
+            f'<div class="nc-step-detail">{_format_inline_highlights(dtl)}</div>'
+            f'</div>'
+        )
+        if i < len(fields["diagram_steps"]) - 1:
+            steps_parts.append(
+                '<div class="nc-flow-arrow">'
+                '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">'
+                '<line x1="4" y1="12" x2="20" y2="12"></line>'
+                '<polyline points="13 5 20 12 13 19"></polyline>'
+                '</svg>'
+                '</div>'
+            )
+    steps_html = "\n".join(steps_parts)
+
+    # Template-specific realistic / digital physical elements
+    decorations_html = ""
+    protip_tape_html = ""
+    top_bar_extra = ""
+
+    if norm_key == "classic_ruled":
+        decorations_html = """
+        <div class="nc-binder-hole nc-hole-top"></div>
+        <div class="nc-binder-hole nc-hole-mid"></div>
+        <div class="nc-binder-hole nc-hole-bot"></div>
+        <div class="nc-margin-line"></div>
+        """
+        protip_tape_html = '<span class="nc-pin-doodle">📌</span>'
+    elif norm_key == "vintage_kraft":
+        decorations_html = """
+        <div class="nc-margin-line"></div>
+        <div class="nc-kraft-texture-overlay"></div>
+        """
+        protip_tape_html = '<div class="nc-scotch-tape"></div>'
+    elif norm_key == "digital_ipad":
+        top_bar_extra = """
+        <div class="nc-digital-statusbar">
+            <span class="nc-ds-time">9:41 AM</span>
+            <span class="nc-ds-title">GoodNotes 6  ✦  Study Deck</span>
+            <span class="nc-ds-battery">✦ Apple Pencil 100% 🔋</span>
         </div>
         """
+        protip_tape_html = '<span class="nc-sparkle-doodle">💡</span>'
+    elif norm_key == "digital_dark":
+        top_bar_extra = """
+        <div class="nc-digital-statusbar nc-cyber-statusbar">
+            <span class="nc-ds-time">23:42</span>
+            <span class="nc-ds-title">NOTABILITY // CYBER DARK AMOLED</span>
+            <span class="nc-ds-battery">⚡ STYLUS ACTIVE 100%</span>
+        </div>
+        """
+        protip_tape_html = '<span class="nc-sparkle-doodle">⚡</span>'
+
+    summary_tag_label = "KEY CONCEPT //" if is_realistic else "KEY IDEA"
 
     return f"""
-    <div class="nc-canvas" id="nc-slide-{fields['page_number']}" data-page="{fields['page_number']}">
-        <div class="nc-margin-line"></div>
+    <div class="nc-canvas nc-theme-{norm_key}" id="nc-slide-{fields['page_number']}" data-page="{fields['page_number']}">
+        {decorations_html}
         <div class="nc-inner">
+            {top_bar_extra}
             <div class="nc-topbar">
                 <div class="nc-subject-pill">NIWNOTES  //  {html.escape(subject_category.upper())}</div>
                 <div class="nc-page-pill">PAGE {fields['page_number']:02d} OF {total_pages:02d}</div>
             </div>
 
             <div class="nc-topic-kicker">{html.escape(topic)}</div>
-            <h1 class="nc-title">{html.escape(fields['title'])}</h1>
+            <div class="nc-title-wrap">
+                <h1 class="nc-title">{html.escape(fields['title'])}</h1>
+                <svg class="nc-title-underline" width="220" height="10" viewBox="0 0 220 10" fill="none">
+                    <path d="M2 6C45 2 90 9 135 5C180 1 205 8 218 5" stroke="var(--ink-accent)" stroke-width="2.6" stroke-linecap="round"/>
+                </svg>
+            </div>
 
             <div class="nc-summary-banner">
-                <span class="nc-summary-tag">KEY IDEA</span>
+                <span class="nc-summary-tag">{summary_tag_label}</span>
                 <p class="nc-summary-text">{_format_inline_highlights(fields['summary_banner'])}</p>
             </div>
 
@@ -430,7 +530,8 @@ def _build_slide_card_html(
 
             <div class="nc-footer-row">
                 <div class="nc-protip-box">
-                    <span class="nc-protip-label">EXAM / PRO TIP</span>
+                    {protip_tape_html}
+                    <span class="nc-protip-label">EXAM / PRO TIP:</span>
                     <span class="nc-protip-text">{_format_inline_highlights(fields['pro_tip'])}</span>
                 </div>
                 <div class="nc-watermark">NIWNOTES STUDIO</div>
@@ -443,7 +544,7 @@ def _build_slide_card_html(
 def build_interactive_studio_html(
     study_data: Optional[StudyCarouselResponse] = None,
     topic: str = "Study_Notes",
-    template_key: str = "classic_cream",
+    template_key: str = "classic_ruled",
     subject_category: str = "AI & Machine Learning",
     language: str = "Sinhala_Mix",
     pages: Optional[List[Any]] = None,
@@ -452,10 +553,11 @@ def build_interactive_studio_html(
 ) -> str:
     """
     Renders the entire multi-page handwritten note studio directly in the user's browser
-    with 0ms server-side rendering wait, responsive mobile scaling, and GPU-accelerated
-    1000x1250 PNG & ZIP export.
-    Supports both (study_data=...) and (pages=..., caption=...) calling conventions.
+    with authentic handwritten Sinhala + English fonts, 2 realistic paper templates + 2 digital stylus templates,
+    responsive mobile/tablet scaling, and client-side GPU PNG/ZIP export.
     """
+    norm_key = normalize_template_key(template_key)
+
     if study_data is not None:
         slide_list = getattr(study_data, "slides", None) or getattr(
             study_data, "pages", []
@@ -466,82 +568,91 @@ def build_interactive_studio_html(
         social_caption_text = caption
 
     theme_css_map = {
-        "classic_cream": """
-            --paper-bg: #FDFBF7;
-            --paper-grid: repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, rgba(148, 163, 184, 0.24) 32px);
+        "classic_ruled": """
+            --paper-bg: #FCFBF7;
+            --paper-grid: repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, rgba(160, 185, 215, 0.45) 32px);
             --paper-grid-size: 100% 32px;
-            --margin-line: rgba(239, 68, 68, 0.35);
-            --ink-primary: #0F172A;
-            --ink-secondary: #334155;
-            --ink-accent: #EA580C;
-            --banner-bg: #FFFBEB;
-            --banner-border: #F59E0B;
+            --margin-line: rgba(239, 68, 68, 0.65);
+            --ink-primary: #152E5A;
+            --ink-secondary: #1E3A8A;
+            --ink-accent: #DC2626;
+            --banner-bg: rgba(254, 240, 138, 0.35);
+            --banner-border: #EAB308;
             --hl-bg: #FEF08A;
             --hl-ink: #713F12;
-            --card-bg: #FFFFFF;
-            --card-border: #1E293B;
-            --step-bg: #FFF7ED;
-            --protip-bg: #F1F5F9;
+            --card-bg: transparent;
+            --card-border: #152E5A;
+            --step-bg: rgba(255, 255, 255, 0.6);
+            --protip-bg: #FEF08A;
+            --protip-border: #EAB308;
+            --font-tilt: -0.2deg;
         """,
-        "dark_neon": """
-            --paper-bg: #0F172A;
-            --paper-grid: radial-gradient(#334155 1.25px, transparent 1.25px);
+        "vintage_kraft": """
+            --paper-bg: #F7F1E5;
+            --paper-grid: linear-gradient(to right, rgba(139, 94, 60, 0.16) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(139, 94, 60, 0.16) 1px, transparent 1px);
+            --paper-grid-size: 18px 18px;
+            --margin-line: rgba(180, 83, 9, 0.48);
+            --ink-primary: #1F1610;
+            --ink-secondary: #4A3324;
+            --ink-accent: #C2410C;
+            --banner-bg: rgba(253, 230, 138, 0.35);
+            --banner-border: #D97706;
+            --hl-bg: #FDE68A;
+            --hl-ink: #451A03;
+            --card-bg: transparent;
+            --card-border: #78350F;
+            --step-bg: rgba(255, 255, 255, 0.55);
+            --protip-bg: #FFFBEB;
+            --protip-border: #B45309;
+            --font-tilt: -0.3deg;
+        """,
+        "digital_ipad": """
+            --paper-bg: #F8FAFC;
+            --paper-grid: radial-gradient(#CBD5E1 1.25px, transparent 1.25px);
+            --paper-grid-size: 22px 22px;
+            --margin-line: rgba(99, 102, 241, 0.32);
+            --ink-primary: #0F172A;
+            --ink-secondary: #475569;
+            --ink-accent: #2563EB;
+            --banner-bg: #EEF2FF;
+            --banner-border: #6366F1;
+            --hl-bg: #C7D2FE;
+            --hl-ink: #312E81;
+            --card-bg: #FFFFFF;
+            --card-border: #CBD5E1;
+            --step-bg: #F1F5F9;
+            --protip-bg: #ECFDF5;
+            --protip-border: #10B981;
+            --font-tilt: 0deg;
+        """,
+        "digital_dark": """
+            --paper-bg: #0B0F19;
+            --paper-grid: radial-gradient(rgba(56, 189, 248, 0.22) 1.25px, transparent 1.25px);
             --paper-grid-size: 24px 24px;
             --margin-line: rgba(56, 189, 248, 0.28);
             --ink-primary: #F8FAFC;
-            --ink-secondary: #CBD5E1;
+            --ink-secondary: #94A3B8;
             --ink-accent: #38BDF8;
-            --banner-bg: rgba(16, 185, 129, 0.14);
-            --banner-border: #10B981;
+            --banner-bg: rgba(56, 189, 248, 0.12);
+            --banner-border: #38BDF8;
             --hl-bg: rgba(56, 189, 248, 0.25);
             --hl-ink: #E0F2FE;
-            --card-bg: #1E293B;
-            --card-border: #38BDF8;
-            --step-bg: #0F172A;
-            --protip-bg: #1E293B;
-        """,
-        "blueprint_grid": """
-            --paper-bg: #EFF6FF;
-            --paper-grid: linear-gradient(to right, rgba(191, 219, 254, 0.55) 1px, transparent 1px),
-                          linear-gradient(to bottom, rgba(191, 219, 254, 0.55) 1px, transparent 1px);
-            --paper-grid-size: 24px 24px;
-            --margin-line: rgba(37, 99, 235, 0.28);
-            --ink-primary: #1E3A8A;
-            --ink-secondary: #1E40AF;
-            --ink-accent: #2563EB;
-            --banner-bg: #DBEAFE;
-            --banner-border: #2563EB;
-            --hl-bg: #BFDBFE;
-            --hl-ink: #1E3A8A;
-            --card-bg: #FFFFFF;
-            --card-border: #1E3A8A;
-            --step-bg: #EFF6FF;
-            --protip-bg: #DBEAFE;
-        """,
-        "cornell_academic": """
-            --paper-bg: #FAF8F5;
-            --paper-grid: repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, rgba(214, 211, 209, 0.45) 32px);
-            --paper-grid-size: 100% 32px;
-            --margin-line: rgba(124, 58, 237, 0.32);
-            --ink-primary: #1C1917;
-            --ink-secondary: #44403C;
-            --ink-accent: #7C3AED;
-            --banner-bg: #F3E8FF;
-            --banner-border: #7C3AED;
-            --hl-bg: #E9D5FF;
-            --hl-ink: #581C87;
-            --card-bg: #FFFFFF;
-            --card-border: #4C1D95;
-            --step-bg: #FAF5FF;
-            --protip-bg: #F5F5F4;
+            --card-bg: #111827;
+            --card-border: rgba(56, 189, 248, 0.38);
+            --step-bg: #1E293B;
+            --protip-bg: rgba(16, 185, 129, 0.14);
+            --protip-border: #10B981;
+            --font-tilt: 0deg;
         """,
     }
-    selected_theme_vars = theme_css_map.get(template_key, theme_css_map["classic_cream"])
+
+    selected_theme_vars = theme_css_map.get(norm_key, theme_css_map["classic_ruled"])
     total_pages = len(slide_list)
     safe_slug = re.sub(r"[^a-zA-Z0-9_-]", "_", topic)[:35] or "NIWNOTES"
 
     slides_deck_html = "\n".join(
-        _build_slide_card_html(s, total_pages, topic, subject_category, idx=i + 1)
+        _build_slide_card_html(s, total_pages, topic, subject_category, idx=i + 1, template_key=norm_key)
         for i, s in enumerate(slide_list)
     )
 
@@ -557,6 +668,21 @@ def build_interactive_studio_html(
 
     escaped_caption = html.escape(social_caption_text)
     lang_badge = "SINHALA + ENGLISH KUPPI MIX" if language == "Sinhala_Mix" else "100% PURE ENGLISH"
+    tpl_meta = NOTE_TEMPLATES.get(norm_key, NOTE_TEMPLATES["classic_ruled"])
+    tpl_style_badge = f"{tpl_meta['category'].upper()} // {tpl_meta['badge'].upper()}"
+
+    # Base64 embedded font CSS block
+    font_face_css = ""
+    if _FONT_B64:
+        font_face_css = f"""
+        @font-face {{
+            font-family: 'FontoshanHandwrite';
+            src: url('data:font/truetype;charset=utf-8;base64,{_FONT_B64}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }}
+        """
 
     return f"""<!DOCTYPE html>
 <html>
@@ -565,11 +691,13 @@ def build_interactive_studio_html(
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Kalam:wght@400;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+Sinhala:wght@500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Kalam:wght@400;700&family=Architects+Daughter&family=Patrick+Hand&family=Maname&family=Yaldevi:wght@400;600;700&family=Noto+Sans+Sinhala:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
+    {font_face_css}
+
     :root {{
         {selected_theme_vars}
     }}
@@ -580,32 +708,37 @@ def build_interactive_studio_html(
         padding: 0;
     }}
 
-    body {{
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    html, body {{
+        width: 100%;
+        max-width: 100vw;
+        overflow-x: hidden;
         background: transparent;
         color: #141413;
-        padding: 4px 2px 24px 2px;
-        overflow-x: hidden;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        padding: 0 0 20px 0;
     }}
 
-    /* WODAY STUDIO SHELL */
+    /* STUDIO WINDOW CONTAINER */
     .studio-window {{
         background: #FFFFFF;
-        border: 1px solid rgba(20, 20, 19, 0.09);
-        border-radius: 24px;
-        box-shadow: 0 12px 34px -8px rgba(20, 20, 19, 0.06);
+        border: 1px solid rgba(20, 20, 19, 0.12);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px -6px rgba(20, 20, 19, 0.08);
         overflow: hidden;
+        width: 100%;
+        box-sizing: border-box;
     }}
 
     .studio-titlebar {{
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 14px 22px;
+        padding: 12px 18px;
         background: #F7F6F2;
         border-bottom: 1px solid rgba(20, 20, 19, 0.08);
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 10px;
+        box-sizing: border-box;
     }}
 
     .macos-dots {{
@@ -629,10 +762,21 @@ def build_interactive_studio_html(
         letter-spacing: -0.01em;
     }}
 
+    .studio-badge {{
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.68rem;
+        font-weight: 700;
+        background: #FFFFFF;
+        color: var(--ink-accent);
+        border: 1px solid rgba(20, 20, 19, 0.1);
+        padding: 3px 8px;
+        border-radius: 999px;
+    }}
+
     .studio-actions {{
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
     }}
 
@@ -643,15 +787,15 @@ def build_interactive_studio_html(
         color: #141413;
         font-family: 'Plus Jakarta Sans', sans-serif;
         font-weight: 700;
-        font-size: 0.8rem;
-        padding: 9px 15px;
+        font-size: 0.78rem;
+        padding: 8px 14px;
         border-radius: 999px;
         cursor: pointer;
         transition: all 0.16s ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 7px;
+        gap: 6px;
         white-space: nowrap;
     }}
     .woday-btn:hover {{
@@ -667,15 +811,23 @@ def build_interactive_studio_html(
         background: #2C2B29;
     }}
 
-    /* WORKSPACE GRID */
+    /* WORKSPACE GRID: FIXED ZERO-BLOWOUT FLEXIBLE COLUMNS */
     .studio-body {{
         display: grid;
-        grid-template-columns: 1.25fr 0.95fr;
-        gap: 24px;
-        padding: 22px;
+        grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr);
+        gap: 20px;
+        padding: 18px;
+        width: 100%;
+        box-sizing: border-box;
     }}
 
-    @media (max-width: 960px) {{
+    .studio-body > div {{
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
+    }}
+
+    @media (max-width: 1060px) {{
         .studio-body {{
             grid-template-columns: 1fr;
             padding: 14px;
@@ -688,10 +840,12 @@ def build_interactive_studio_html(
         display: flex;
         gap: 8px;
         overflow-x: auto;
-        padding-bottom: 10px;
-        margin-bottom: 14px;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
         scrollbar-width: thin;
         -webkit-overflow-scrolling: touch;
+        width: 100%;
+        box-sizing: border-box;
     }}
 
     .thumb-pill {{
@@ -699,17 +853,17 @@ def build_interactive_studio_html(
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 13px;
+        padding: 7px 12px;
         border-radius: 12px;
         border: 1px solid rgba(20, 20, 19, 0.1);
         background: #F7F6F2;
         color: #5E5D59;
         cursor: pointer;
         font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 0.78rem;
+        font-size: 0.76rem;
         font-weight: 700;
         transition: all 0.15s ease;
-        max-width: 210px;
+        max-width: 200px;
     }}
     .thumb-pill.active {{
         background: #141413;
@@ -727,32 +881,37 @@ def build_interactive_studio_html(
         text-overflow: ellipsis;
     }}
 
-    /* STAGE VIEWPORT (RESPONSIVE DYNAMIC SCALING OF 1000x1250 CANVAS) */
+    /* RESPONSIVE INSPECTOR STAGE */
     .inspector-stage {{
         background: #F3F2EE;
         border: 1px solid rgba(20, 20, 19, 0.08);
-        border-radius: 20px;
+        border-radius: 18px;
         padding: 16px;
         display: flex;
         flex-direction: column;
         align-items: center;
+        width: 100%;
+        box-sizing: border-box;
     }}
 
     .inspector-viewport {{
         width: 100%;
-        max-width: 480px;
-        height: 600px;
+        max-width: 520px;
+        aspect-ratio: 1000 / 1250;
         position: relative;
         overflow: hidden;
         border-radius: 14px;
-        box-shadow: 0 16px 38px -10px rgba(15, 23, 42, 0.22);
+        box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.22);
         background: var(--paper-bg);
+        margin: 0 auto;
     }}
 
     .inspector-scale-wrap {{
         width: 1000px;
         height: 1250px;
-        transform: scale(0.48);
+        position: absolute;
+        top: 0;
+        left: 0;
         transform-origin: top left;
     }}
 
@@ -761,7 +920,7 @@ def build_interactive_studio_html(
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        max-width: 480px;
+        max-width: 520px;
         margin-top: 14px;
         gap: 8px;
     }}
@@ -795,22 +954,83 @@ def build_interactive_studio_html(
         display: flex;
         flex-direction: column;
         justify-content: space-between;
+        text-shadow: 0 0 0.4px rgba(20, 20, 19, 0.25);
     }}
 
+    /* REALISTIC TEMPLATES: PHYSICAL PAPER LOOK (NO CARDS, PURE HANDWRITING) */
+    .nc-theme-classic_ruled,
+    .nc-theme-vintage_kraft {{
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 18px 45px -8px rgba(0,0,0,0.22);
+        border-radius: 3px;
+    }}
+
+    /* MARGIN LINE & BINDER HOLES (PHYSICAL PAPER FEATURES) */
     .nc-margin-line {{
         position: absolute;
         top: 0;
         bottom: 0;
-        left: 78px;
-        width: 2.5px;
+        left: 82px;
+        width: 2.2px;
         background: var(--margin-line);
-        z-index: 1;
+        box-shadow: 1px 0 0 rgba(239, 68, 68, 0.15);
+        z-index: 2;
+    }}
+
+    .nc-binder-hole {{
+        position: absolute;
+        left: 22px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, #DDD6C8 0%, #B4AC98 65%, #8E8570 100%);
+        box-shadow: inset 2px 2px 5px rgba(0,0,0,0.45), 1px 1px 2px rgba(255,255,255,0.7);
+        border: 1px solid rgba(0,0,0,0.12);
+        z-index: 5;
+    }}
+    .nc-hole-top {{ top: 140px; }}
+    .nc-hole-mid {{ top: 625px; }}
+    .nc-hole-bot {{ top: 1100px; }}
+
+    /* SCOTCH TAPE STRIP (VINTAGE KRAFT STICKY EFFECT) */
+    .nc-scotch-tape {{
+        position: absolute;
+        top: -12px;
+        left: 36px;
+        width: 96px;
+        height: 22px;
+        background: rgba(255, 255, 235, 0.74);
+        border: 1px solid rgba(210, 195, 160, 0.5);
+        transform: rotate(-2.2deg);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        backdrop-filter: blur(1px);
+        z-index: 8;
+    }}
+
+    /* DIGITAL TABLET STATUS BAR (IPAD / NOTABILITY) */
+    .nc-digital-statusbar {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 14px;
+        background: rgba(241, 245, 249, 0.75);
+        border-bottom: 1.5px solid rgba(203, 213, 225, 0.6);
+        border-radius: 12px 12px 0 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ink-secondary);
+        margin-bottom: 8px;
+    }}
+    .nc-cyber-statusbar {{
+        background: rgba(17, 24, 39, 0.85);
+        border-bottom: 1.5px solid rgba(56, 189, 248, 0.3);
+        color: var(--ink-accent);
     }}
 
     .nc-inner {{
         position: relative;
-        z-index: 2;
-        padding: 48px 56px 44px 104px;
+        z-index: 3;
+        padding: 38px 48px 36px 98px;
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -821,181 +1041,315 @@ def build_interactive_studio_html(
         display: flex;
         align-items: center;
         justify-content: space-between;
-        border-bottom: 2px dashed rgba(148, 163, 184, 0.35);
-        padding-bottom: 14px;
+        border-bottom: 2px dashed rgba(148, 163, 184, 0.4);
+        padding-bottom: 12px;
+    }}
+
+    .nc-theme-classic_ruled .nc-topbar,
+    .nc-theme-vintage_kraft .nc-topbar {{
+        border-bottom: 2px solid var(--margin-line);
+        padding-bottom: 8px;
     }}
 
     .nc-subject-pill {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--ink-accent);
         letter-spacing: 0.04em;
     }}
+    .nc-theme-classic_ruled .nc-subject-pill,
+    .nc-theme-vintage_kraft .nc-subject-pill {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--ink-secondary);
+        letter-spacing: 0;
+    }}
 
     .nc-page-pill {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
         background: var(--card-bg);
         color: var(--ink-primary);
         border: 2px solid var(--card-border);
-        padding: 5px 14px;
+        padding: 4px 13px;
         border-radius: 999px;
-        box-shadow: 3px 3px 0px var(--card-border);
+        box-shadow: 2px 2px 0px var(--card-border);
+    }}
+    .nc-theme-classic_ruled .nc-page-pill,
+    .nc-theme-vintage_kraft .nc-page-pill {{
+        background: transparent;
+        border: 1.8px solid var(--ink-primary);
+        border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--ink-primary);
+        box-shadow: none;
+        padding: 2px 10px;
     }}
 
     .nc-topic-kicker {{
-        font-family: 'Caveat', cursive;
-        font-size: 28px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', 'Patrick Hand', cursive;
+        font-size: 25px;
         font-weight: 700;
         color: var(--ink-accent);
-        margin-top: 6px;
+        margin-top: 4px;
+    }}
+
+    .nc-title-wrap {{
+        position: relative;
+        margin-bottom: 4px;
     }}
 
     .nc-title {{
-        font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', sans-serif;
-        font-size: 44px;
-        font-weight: 800;
-        line-height: 1.15;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', 'Architects Daughter', 'Maname', 'Yaldevi', 'Noto Sans Sinhala', sans-serif;
+        font-size: 38px;
+        font-weight: 700;
+        line-height: 1.18;
         color: var(--ink-primary);
-        letter-spacing: -0.02em;
-        margin-bottom: 6px;
+        letter-spacing: -0.015em;
+        margin-bottom: 2px;
     }}
 
+    .nc-title-underline {{
+        display: block;
+        margin-top: -2px;
+        opacity: 0.85;
+    }}
+
+    /* HIGHLIGHTER BANNER / KEY CONCEPT */
     .nc-summary-banner {{
         background: var(--banner-bg);
         border-left: 6px solid var(--banner-border);
         border-radius: 14px;
-        padding: 16px 20px;
+        padding: 13px 18px;
         display: flex;
         align-items: flex-start;
-        gap: 14px;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+        gap: 12px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+        margin: 4px 0;
+    }}
+
+    /* REALISTIC TEMPLATES: NATURAL PAPER SUMMARY (NO CARDS) */
+    .nc-theme-classic_ruled .nc-summary-banner,
+    .nc-theme-vintage_kraft .nc-summary-banner {{
+        background: transparent;
+        border: none;
+        border-left: 5px solid var(--banner-border);
+        border-radius: 0;
+        box-shadow: none;
+        padding: 6px 14px;
+        margin: 4px 0;
     }}
 
     .nc-summary-tag {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 700;
         background: var(--banner-border);
         color: #FFFFFF;
-        padding: 4px 9px;
+        padding: 3px 8px;
         border-radius: 6px;
         flex-shrink: 0;
         margin-top: 3px;
     }}
 
+    .nc-theme-classic_ruled .nc-summary-tag,
+    .nc-theme-vintage_kraft .nc-summary-tag {{
+        background: transparent;
+        color: var(--ink-accent);
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 19px;
+        font-weight: 800;
+        padding: 0;
+        border-radius: 0;
+        letter-spacing: 0.03em;
+    }}
+
     .nc-summary-text {{
-        font-family: 'Kalam', 'Noto Sans Sinhala', cursive, sans-serif;
-        font-size: 24px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', 'Patrick Hand', 'Maname', 'Yaldevi', 'Noto Sans Sinhala', cursive, sans-serif;
+        font-size: 21px;
         font-weight: 600;
-        line-height: 1.42;
+        line-height: 1.38;
         color: var(--ink-primary);
     }}
 
+    /* BULLET LIST */
     .nc-bullet-list {{
         list-style: none;
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        margin: 8px 0;
+        gap: 11px;
+        margin: 6px 0;
     }}
 
     .nc-bullet-item {{
         display: flex;
         align-items: flex-start;
-        gap: 16px;
+        gap: 14px;
         background: var(--card-bg);
         border: 2px solid rgba(148, 163, 184, 0.28);
-        border-radius: 16px;
-        padding: 16px 20px;
+        border-radius: 14px;
+        padding: 13px 18px;
+    }}
+
+    /* REALISTIC TEMPLATES: WRITE DIRECTLY ON PAPER LINES (NO WHITE BOXES!) */
+    .nc-theme-classic_ruled .nc-bullet-item,
+    .nc-theme-vintage_kraft .nc-bullet-item {{
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 4px 0 !important;
+        box-shadow: none !important;
+        gap: 12px !important;
     }}
 
     .nc-bullet-dot {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 700;
         background: var(--ink-accent);
         color: #FFFFFF;
-        min-width: 36px;
-        height: 36px;
+        min-width: 32px;
+        height: 32px;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
         margin-top: 2px;
+        border-radius: 50% 45% 48% 52% / 48% 52% 45% 50%;
+        transform: rotate(-1.5deg);
+    }}
+
+    .nc-theme-classic_ruled .nc-bullet-dot,
+    .nc-theme-vintage_kraft .nc-bullet-dot {{
+        background: transparent !important;
+        color: var(--ink-accent) !important;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive !important;
+        font-size: 26px !important;
+        font-weight: 800 !important;
+        min-width: 30px !important;
+        height: auto !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        transform: none !important;
+        margin-top: -3px !important;
     }}
 
     .nc-bullet-text {{
-        font-family: 'Kalam', 'Noto Sans Sinhala', cursive, sans-serif;
-        font-size: 24px;
-        font-weight: 500;
-        line-height: 1.46;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', 'Patrick Hand', 'Maname', 'Yaldevi', 'Noto Sans Sinhala', cursive, sans-serif;
+        font-size: 21px;
+        font-weight: 600;
+        line-height: 1.4;
         color: var(--ink-primary);
     }}
 
     .hl-mark {{
         background: var(--hl-bg);
         color: var(--hl-ink);
-        padding: 1px 7px;
-        border-radius: 6px;
+        padding: 2px 7px;
+        border-radius: 4px 7px 3px 6px;
         font-weight: 700;
+        display: inline;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        -webkit-box-decoration-break: clone;
+        box-decoration-break: clone;
     }}
 
     /* 3-STEP VISUAL ARCHITECTURE FLOW BOX */
     .nc-diagram-box {{
         background: var(--card-bg);
-        border: 2.5px solid var(--card-border);
-        border-radius: 18px;
-        padding: 18px 20px;
-        box-shadow: 5px 5px 0px var(--card-border);
+        border: 2px solid var(--card-border);
+        border-radius: 16px;
+        padding: 14px 18px;
+        box-shadow: 4px 4px 0px var(--card-border);
+        margin: 6px 0;
+    }}
+
+    /* REALISTIC TEMPLATES: HAND-SKETCHED DIAGRAM BOX (ORGANIC PEN STROKES) */
+    .nc-theme-classic_ruled .nc-diagram-box,
+    .nc-theme-vintage_kraft .nc-diagram-box {{
+        background: transparent !important;
+        border: 2px dashed rgba(21, 46, 90, 0.45) !important;
+        border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+        box-shadow: none !important;
+        padding: 12px 16px !important;
+    }}
+
+    .nc-theme-vintage_kraft .nc-diagram-box {{
+        border: 2px dashed rgba(120, 53, 15, 0.45) !important;
     }}
 
     .nc-diagram-header {{
         display: flex;
         align-items: center;
-        gap: 10px;
-        margin-bottom: 14px;
+        gap: 8px;
+        margin-bottom: 11px;
     }}
 
     .nc-diagram-dot {{
-        width: 12px;
-        height: 12px;
+        width: 10px;
+        height: 10px;
         border-radius: 999px;
         background: var(--ink-accent);
     }}
 
     .nc-diagram-title {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 17px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--ink-primary);
         text-transform: uppercase;
         letter-spacing: 0.04em;
     }}
 
+    .nc-theme-classic_ruled .nc-diagram-title,
+    .nc-theme-vintage_kraft .nc-diagram-title {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive !important;
+        font-size: 21px !important;
+        font-weight: 700 !important;
+        color: var(--ink-accent) !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+    }}
+
     .nc-diagram-grid {{
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
+        display: flex;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 8px;
     }}
 
     .nc-step-card {{
+        flex: 1;
+        min-width: 0;
         background: var(--step-bg);
         border: 2px solid var(--ink-accent);
-        border-radius: 12px;
-        padding: 12px 14px;
+        border-radius: 11px;
+        padding: 10px 12px;
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        min-width: 0;
+        gap: 4px;
+    }}
+
+    /* REALISTIC TEMPLATES: HAND-DRAWN SKETCH BOXES FOR DIAGRAM STEPS */
+    .nc-theme-classic_ruled .nc-step-card,
+    .nc-theme-vintage_kraft .nc-step-card {{
+        background: rgba(255, 255, 255, 0.55) !important;
+        border: 2px solid var(--ink-primary) !important;
+        border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+        box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.12) !important;
+        padding: 9px 11px !important;
     }}
 
     .nc-step-badge {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 15px;
+        font-size: 13.5px;
         font-weight: 700;
         color: var(--ink-accent);
         white-space: nowrap;
@@ -1003,20 +1357,40 @@ def build_interactive_studio_html(
         text-overflow: ellipsis;
     }}
 
+    .nc-theme-classic_ruled .nc-step-badge,
+    .nc-theme-vintage_kraft .nc-step-badge {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive !important;
+        font-size: 17px !important;
+        font-weight: 800 !important;
+        color: var(--ink-accent) !important;
+        border-bottom: 1.5px dashed var(--ink-accent);
+        padding-bottom: 2px;
+    }}
+
     .nc-step-detail {{
-        font-family: 'Kalam', 'Noto Sans Sinhala', cursive, sans-serif;
-        font-size: 20px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', 'Patrick Hand', 'Maname', 'Yaldevi', 'Noto Sans Sinhala', cursive, sans-serif;
+        font-size: 18px;
         font-weight: 600;
-        line-height: 1.35;
+        line-height: 1.34;
         color: var(--ink-primary);
     }}
 
+    .nc-flow-arrow {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ink-accent);
+        flex-shrink: 0;
+        opacity: 0.85;
+    }}
+
+    /* FOOTER & PRO TIP */
     .nc-footer-row {{
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-        padding-top: 10px;
+        gap: 14px;
+        padding-top: 6px;
     }}
 
     .nc-protip-box {{
@@ -1024,49 +1398,99 @@ def build_interactive_studio_html(
         background: var(--protip-bg);
         border: 2px solid var(--card-border);
         border-radius: 12px;
-        padding: 12px 16px;
+        padding: 10px 14px;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+        position: relative;
+    }}
+
+    /* REALISTIC TEMPLATE 1: REAL YELLOW 3M POST-IT STICKY NOTE */
+    .nc-theme-classic_ruled .nc-protip-box {{
+        background: #FEF08A !important;
+        border: none !important;
+        border-radius: 3px 3px 18px 3px !important;
+        box-shadow: 2px 8px 18px -2px rgba(0,0,0,0.2) !important;
+        transform: rotate(-1.5deg) !important;
+        padding: 10px 16px !important;
+    }}
+    .nc-theme-classic_ruled .nc-protip-label {{
+        background: #EAB308 !important;
+        color: #713F12 !important;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        padding: 2px 7px !important;
+        border-radius: 4px !important;
+    }}
+
+    /* REALISTIC TEMPLATE 2: TAPED KRAFT PAPER SNIPPET */
+    .nc-theme-vintage_kraft .nc-protip-box {{
+        background: #FFFBEB !important;
+        border: 1.5px dashed #B45309 !important;
+        border-radius: 4px !important;
+        box-shadow: 2px 8px 16px -2px rgba(0,0,0,0.15) !important;
+        transform: rotate(0.8deg) !important;
+        padding: 10px 16px !important;
+    }}
+    .nc-theme-vintage_kraft .nc-protip-label {{
+        background: #B45309 !important;
+        color: #FFFFFF !important;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        padding: 2px 7px !important;
+        border-radius: 4px !important;
     }}
 
     .nc-protip-label {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 700;
         background: var(--ink-primary);
         color: var(--paper-bg);
-        padding: 4px 8px;
-        border-radius: 6px;
+        padding: 3px 7px;
+        border-radius: 5px;
         white-space: nowrap;
         flex-shrink: 0;
     }}
 
     .nc-protip-text {{
-        font-family: 'Kalam', 'Noto Sans Sinhala', cursive, sans-serif;
-        font-size: 20px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', 'Patrick Hand', 'Maname', 'Yaldevi', 'Noto Sans Sinhala', cursive, sans-serif;
+        font-size: 18px;
         font-weight: 600;
         color: var(--ink-primary);
-        line-height: 1.35;
+        line-height: 1.32;
     }}
 
     .nc-watermark {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 700;
         color: var(--ink-secondary);
         white-space: nowrap;
+        opacity: 0.85;
+    }}
+    .nc-theme-classic_ruled .nc-watermark,
+    .nc-theme-vintage_kraft .nc-watermark {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--ink-secondary);
+        opacity: 0.75;
     }}
 
     /* RIGHT COLUMN: SOCIAL CAPTION & EXPORT KIT */
     .social-panel {{
         background: #F7F6F2;
         border: 1px solid rgba(20, 20, 19, 0.08);
-        border-radius: 20px;
-        padding: 20px;
+        border-radius: 18px;
+        padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
+        width: 100%;
+        box-sizing: border-box;
     }}
 
     .social-header {{
@@ -1078,7 +1502,7 @@ def build_interactive_studio_html(
     }}
 
     .social-title {{
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         font-weight: 800;
         color: #141413;
     }}
@@ -1096,32 +1520,33 @@ def build_interactive_studio_html(
 
     .caption-textarea {{
         width: 100%;
-        min-height: 290px;
+        min-height: 260px;
         border: 1px solid rgba(20, 20, 19, 0.12);
-        border-radius: 14px;
+        border-radius: 12px;
         background: #FFFFFF;
-        padding: 14px 16px;
+        padding: 12px 14px;
         font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', sans-serif;
         font-size: 0.88rem;
-        line-height: 1.6;
+        line-height: 1.55;
         color: #141413;
         resize: vertical;
+        box-sizing: border-box;
     }}
 
     .quick-grid-title {{
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 800;
         color: #5E5D59;
-        margin-top: 6px;
+        margin-top: 4px;
     }}
 
     .mini-slide-grid {{
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
         gap: 8px;
-        max-height: 210px;
+        max-height: 200px;
         overflow-y: auto;
-        padding: 4px;
+        padding: 2px;
     }}
 
     .mini-slide-btn {{
@@ -1140,7 +1565,7 @@ def build_interactive_studio_html(
     .mini-slide-btn span {{
         display: block;
         font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         font-weight: 700;
         color: #FF5A36;
     }}
@@ -1154,10 +1579,10 @@ def build_interactive_studio_html(
         margin-top: 2px;
     }}
 
-    /* MOBILE VIEW BREAKPOINTS */
+    /* MOBILE RESPONSIVE TWEAKS */
     @media (max-width: 640px) {{
         .studio-titlebar {{
-            padding: 12px 14px;
+            padding: 11px 13px;
         }}
         .studio-bar-title {{
             font-size: 0.76rem;
@@ -1167,12 +1592,12 @@ def build_interactive_studio_html(
             width: 100%;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 6px;
         }}
         .woday-btn {{
             width: 100%;
             padding: 8px 10px;
-            font-size: 0.74rem;
+            font-size: 0.72rem;
         }}
         .inspector-stage {{
             padding: 10px;
@@ -1180,13 +1605,13 @@ def build_interactive_studio_html(
         }}
         .stage-nav-bar .woday-btn {{
             width: auto;
-            padding: 7px 13px;
+            padding: 6px 12px;
         }}
         .social-panel {{
-            padding: 14px;
+            padding: 13px;
         }}
         .caption-textarea {{
-            min-height: 220px;
+            min-height: 210px;
             font-size: 0.82rem;
         }}
     }}
@@ -1200,14 +1625,15 @@ def build_interactive_studio_html(
             <span class="dot dot-r"></span>
             <span class="dot dot-y"></span>
             <span class="dot dot-g"></span>
-            <span class="studio-bar-title" style="margin-left:8px;">NIWNOTES Studio — {html.escape(topic)} ({total_pages} Slides)</span>
+            <span class="studio-bar-title" style="margin-left:6px;">NIWNOTES Studio — {html.escape(topic)}</span>
+            <span class="studio-badge">{tpl_style_badge}</span>
         </div>
         <div class="studio-actions">
             <button class="woday-btn" onclick="downloadCurrentSlidePNG()" id="dl-single-btn">
-                Download Current (.PNG)
+                Download Slide (.PNG)
             </button>
             <button class="woday-btn woday-btn-primary" onclick="downloadAllSlidesZIP()" id="dl-zip-btn">
-                Download All {total_pages} Slides (.ZIP)
+                Export All {total_pages} (.ZIP)
             </button>
         </div>
     </div>
@@ -1233,7 +1659,7 @@ def build_interactive_studio_html(
 
         <div class="social-panel">
             <div class="social-header">
-                <span class="social-title">LinkedIn & Facebook Study Post Caption</span>
+                <span class="social-title">LinkedIn & Facebook Study Caption</span>
                 <span class="social-lang-tag">{lang_badge}</span>
             </div>
 
@@ -1315,7 +1741,7 @@ def build_interactive_studio_html(
         box.select();
         navigator.clipboard.writeText(box.value);
         const oldText = btn.textContent;
-        btn.textContent = 'Copied to Clipboard';
+        btn.textContent = 'Copied to Clipboard!';
         setTimeout(() => {{ btn.textContent = oldText; }}, 1800);
     }}
 
@@ -1399,6 +1825,7 @@ def build_interactive_studio_html(
     }})();
 
     window.addEventListener('resize', updateInspectorScale);
+    window.addEventListener('orientationchange', updateInspectorScale);
     if (window.ResizeObserver) {{
         const ro = new ResizeObserver(updateInspectorScale);
         const vp = document.getElementById('inspector-viewport');
@@ -1406,7 +1833,28 @@ def build_interactive_studio_html(
     }}
 
     selectSlide(1);
+    requestAnimationFrame(updateInspectorScale);
 </script>
 </body>
 </html>
 """
+
+
+# =====================================================================
+# 6. STANDALONE & CLI COMPATIBILITY EXPORT
+# =====================================================================
+def render_all_pages(guide: Any, author: str = "@Student", output_dir: str = "output"):
+    """Saves the generated study guide HTML and caption for CLI use (main.py)."""
+    os.makedirs(output_dir, exist_ok=True)
+    html_content = build_interactive_studio_html(
+        study_data=guide,
+        topic=getattr(guide, "topic", "Handwritten_Notes"),
+        subject_category="Computer Science",
+    )
+    with open(os.path.join(output_dir, "notes_studio.html"), "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    caption_text = getattr(guide, "social_caption", "")
+    if caption_text:
+        with open(os.path.join(output_dir, "caption.txt"), "w", encoding="utf-8") as f:
+            f.write(caption_text)

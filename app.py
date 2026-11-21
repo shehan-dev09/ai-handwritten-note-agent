@@ -10,6 +10,7 @@ from trend_agent import (
 )
 from note_generator import (
     NOTE_TEMPLATES,
+    normalize_template_key,
     generate_5_page_study_guide,
     build_interactive_studio_html,
 )
@@ -43,11 +44,11 @@ def format_subject_label(subject_name: str) -> str:
     return f"[{code}]  {subject_name}"
 
 
-# Woday.app Inspired Daylight macOS Design System + Mobile Responsive CSS
+# Woday.app Inspired Daylight macOS Design System + Mobile/Tablet Responsive CSS
 st.markdown(
     """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Caveat:wght@600;700&family=Kalam:wght@400;700&display=swap');
 
     :root {
         --bg-canvas: #F7F6F2;
@@ -77,11 +78,12 @@ st.markdown(
     #MainMenu, footer, header {visibility: hidden;}
 
     .block-container {
-        max-width: 1280px !important;
-        padding-top: 1.5rem !important;
-        padding-bottom: 3.5rem !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
+        max-width: 1320px !important;
+        padding-top: 1.2rem !important;
+        padding-bottom: 3rem !important;
+        padding-left: 1.2rem !important;
+        padding-right: 1.2rem !important;
+        overflow-x: hidden !important;
     }
 
     /* WODAY TOP NAVIGATION BAR */
@@ -89,13 +91,13 @@ st.markdown(
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         border: 1px solid var(--border-hairline);
         border-radius: 999px;
         padding: 10px 20px;
-        margin-bottom: 24px;
+        margin-bottom: 22px;
         box-shadow: var(--shadow-card);
         gap: 12px;
         flex-wrap: wrap;
@@ -160,9 +162,9 @@ st.markdown(
     /* WODAY HERO SECTION */
     .woday-hero {
         text-align: center;
-        max-width: 780px;
-        margin: 0 auto 28px auto;
-        padding: 6px 12px;
+        max-width: 800px;
+        margin: 0 auto 26px auto;
+        padding: 4px 12px;
     }
     .woday-eyebrow {
         display: inline-flex;
@@ -176,7 +178,7 @@ st.markdown(
         font-weight: 700;
         color: var(--text-secondary);
         box-shadow: var(--shadow-card);
-        margin-bottom: 14px;
+        margin-bottom: 12px;
     }
     .woday-eyebrow span {
         color: var(--accent-coral);
@@ -184,15 +186,15 @@ st.markdown(
     }
     .woday-title {
         font-family: 'Plus Jakarta Sans', sans-serif !important;
-        font-size: 2.55rem !important;
+        font-size: clamp(1.8rem, 4vw, 2.55rem) !important;
         font-weight: 800 !important;
-        line-height: 1.12 !important;
+        line-height: 1.15 !important;
         letter-spacing: -0.035em !important;
         color: var(--text-primary) !important;
         margin: 0 0 10px 0 !important;
     }
     .woday-subtitle {
-        font-size: 0.98rem !important;
+        font-size: 0.95rem !important;
         line-height: 1.55 !important;
         color: var(--text-secondary) !important;
         margin: 0 auto !important;
@@ -371,6 +373,14 @@ st.markdown(
         color: #FFFFFF;
         border-color: var(--text-primary);
     }
+    .tpl-tag-pill {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.62rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 4px;
+        letter-spacing: 0.02em;
+    }
 
     /* STREAMLIT WIDGET OVERRIDES */
     .stTextInput > div > div > input,
@@ -390,6 +400,7 @@ st.markdown(
         font-weight: 700 !important;
         font-size: 0.82rem !important;
         padding: 0.48rem 0.85rem !important;
+        min-height: 40px !important;
         transition: all 0.15s ease !important;
     }
     .stButton > button[kind="primary"] {
@@ -432,19 +443,45 @@ st.markdown(
         font-weight: 700;
     }
 
-    /* MOBILE RESPONSIVE BREAKPOINTS */
+    /* IFRAME FULL CONTAINER WIDTH */
+    iframe[title="streamlit.components.v1.html"] {
+        width: 100% !important;
+        border: none !important;
+        border-radius: 20px !important;
+    }
+
+    /* TABLET RESPONSIVE BREAKPOINT (769px to 1024px) */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .block-container {
+            padding-top: 1rem !important;
+            padding-left: 0.9rem !important;
+            padding-right: 0.9rem !important;
+        }
+        .woday-title {
+            font-size: 2.1rem !important;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            padding: 16px !important;
+        }
+        .rank-card {
+            padding: 10px 12px;
+        }
+    }
+
+    /* MOBILE RESPONSIVE BREAKPOINTS (< 768px) */
     @media (max-width: 768px) {
         .block-container {
-            padding-top: 0.8rem !important;
-            padding-left: 0.75rem !important;
-            padding-right: 0.75rem !important;
+            padding-top: 0.6rem !important;
+            padding-left: 0.55rem !important;
+            padding-right: 0.55rem !important;
             padding-bottom: 2rem !important;
         }
         .woday-nav {
             border-radius: 18px;
-            padding: 10px 14px;
+            padding: 9px 12px;
             justify-content: center;
             text-align: center;
+            gap: 8px;
         }
         .woday-brand-tag {
             display: none;
@@ -452,22 +489,23 @@ st.markdown(
         .woday-nav-pills {
             width: 100%;
             justify-content: center;
+            gap: 6px;
         }
         .woday-title {
-            font-size: 1.75rem !important;
+            font-size: 1.7rem !important;
             line-height: 1.18 !important;
         }
         .woday-subtitle {
-            font-size: 0.86rem !important;
+            font-size: 0.85rem !important;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] {
-            padding: 14px !important;
+            padding: 13px !important;
             border-radius: 16px !important;
         }
         .rank-card {
             flex-direction: column;
-            gap: 8px;
-            padding: 11px 12px;
+            gap: 6px;
+            padding: 10px 11px;
         }
         .rank-cat-pill {
             align-self: flex-start;
@@ -475,7 +513,10 @@ st.markdown(
         .config-summary-strip {
             flex-direction: column;
             align-items: flex-start;
-            gap: 6px;
+            gap: 5px;
+        }
+        .stButton > button {
+            min-height: 42px !important;
         }
     }
 </style>
@@ -486,92 +527,138 @@ st.markdown(
 
 def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
     """
-    Renders a single-line unindented HTML/CSS miniature notebook card.
-    Avoids Markdown code-block escaping and SVG <defs> stripping in Streamlit.
+    Renders a clean, compact HTML/CSS miniature notebook card.
+    Accurately represents 2 Realistic physical paper styles (Ruled paper, Kraft journal)
+    with handwritten lines, and 2 Digital stylus styles (iPad GoodNotes, Notability Cyber Dark).
     """
+    norm_key = normalize_template_key(tpl_key)
+
     themes = {
-        "classic_cream": {
-            "name": "Classic Cream",
-            "bg": "#FDFBF7",
-            "grid": "repeating-linear-gradient(to bottom, transparent 0px, transparent 15px, #E2E8F0 16px)",
-            "margin": "rgba(239, 68, 68, 0.35)",
-            "ink": "#0F172A",
-            "muted": "#475569",
-            "accent": "#EA580C",
+        "classic_ruled": {
+            "name": "Ruled Notebook",
+            "type_tag": "REALISTIC",
+            "type_bg": "rgba(220, 38, 38, 0.12)",
+            "type_color": "#DC2626",
+            "bg": "#FCFBF7",
+            "grid": "repeating-linear-gradient(to bottom, transparent 0px, transparent 15px, rgba(160, 185, 215, 0.45) 16px)",
+            "margin": "rgba(239, 68, 68, 0.55)",
+            "ink": "#152E5A",
+            "accent": "#DC2626",
             "hi_bg": "#FEF08A",
-            "hi_ink": "#854D0E",
-            "box_bg": "#FFFFFF",
-            "box_border": "#1E293B",
-            "pill_bg": "#FFF7ED",
+            "hi_ink": "#713F12",
+            "box_bg": "#FEF08A",
+            "box_border": "#EAB308",
+            "hole": True,
         },
-        "dark_neon": {
-            "name": "Obsidian Dark",
-            "bg": "#0F172A",
-            "grid": "radial-gradient(#334155 1px, transparent 1px)",
+        "vintage_kraft": {
+            "name": "Quad Grid Pad",
+            "type_tag": "REALISTIC",
+            "type_bg": "rgba(180, 83, 9, 0.12)",
+            "type_color": "#B45309",
+            "bg": "#F7F1E5",
+            "grid": "linear-gradient(to right, rgba(139, 94, 60, 0.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(139, 94, 60, 0.14) 1px, transparent 1px)",
+            "grid_size": "14px 14px",
+            "margin": "rgba(180, 83, 9, 0.4)",
+            "ink": "#1F1610",
+            "accent": "#C2410C",
+            "hi_bg": "#FDE68A",
+            "hi_ink": "#451A03",
+            "box_bg": "#FFFBEB",
+            "box_border": "#B45309",
+            "hole": False,
+        },
+        "digital_ipad": {
+            "name": "iPad GoodNotes",
+            "type_tag": "DIGITAL",
+            "type_bg": "rgba(37, 99, 235, 0.12)",
+            "type_color": "#2563EB",
+            "bg": "#F8FAFC",
+            "grid": "radial-gradient(#CBD5E1 1px, transparent 1px)",
+            "grid_size": "12px 12px",
+            "margin": "rgba(99, 102, 241, 0.3)",
+            "ink": "#0F172A",
+            "accent": "#2563EB",
+            "hi_bg": "#C7D2FE",
+            "hi_ink": "#312E81",
+            "box_bg": "#FFFFFF",
+            "box_border": "#CBD5E1",
+            "pill_bg": "#F1F5F9",
+            "hole": False,
+        },
+        "digital_dark": {
+            "name": "Cyber Dark",
+            "type_tag": "DIGITAL",
+            "type_color": "#38BDF8",
+            "type_bg": "rgba(56, 189, 248, 0.15)",
+            "bg": "#0B0F19",
+            "grid": "radial-gradient(rgba(56, 189, 248, 0.22) 1px, transparent 1px)",
             "grid_size": "12px 12px",
             "margin": "rgba(56, 189, 248, 0.28)",
             "ink": "#F8FAFC",
-            "muted": "#94A3B8",
             "accent": "#38BDF8",
-            "hi_bg": "rgba(16, 185, 129, 0.22)",
-            "hi_ink": "#6EE7B7",
-            "box_bg": "#1E293B",
-            "box_border": "#38BDF8",
-            "pill_bg": "#0F172A",
-        },
-        "blueprint_grid": {
-            "name": "Blueprint Grid",
-            "bg": "#EFF6FF",
-            "grid": "linear-gradient(to right, #DBEAFE 1px, transparent 1px), linear-gradient(to bottom, #DBEAFE 1px, transparent 1px)",
-            "grid_size": "14px 14px",
-            "margin": "rgba(37, 99, 235, 0.28)",
-            "ink": "#1E3A8A",
-            "muted": "#3B82F6",
-            "accent": "#2563EB",
-            "hi_bg": "#DBEAFE",
-            "hi_ink": "#1E40AF",
-            "box_bg": "#FFFFFF",
-            "box_border": "#1E3A8A",
-            "pill_bg": "#EFF6FF",
-        },
-        "cornell_academic": {
-            "name": "Cornell Exam",
-            "bg": "#FAF8F5",
-            "grid": "repeating-linear-gradient(to bottom, transparent 0px, transparent 15px, #E7E5E4 16px)",
-            "margin": "rgba(124, 58, 237, 0.35)",
-            "ink": "#1C1917",
-            "muted": "#57534E",
-            "accent": "#7C3AED",
-            "hi_bg": "#F3E8FF",
-            "hi_ink": "#6D28D9",
-            "box_bg": "#FFFFFF",
-            "box_border": "#4C1D95",
-            "pill_bg": "#FAF5FF",
+            "hi_bg": "rgba(56, 189, 248, 0.25)",
+            "hi_ink": "#E0F2FE",
+            "box_bg": "#111827",
+            "box_border": "rgba(56, 189, 248, 0.4)",
+            "pill_bg": "#1E293B",
+            "hole": False,
         },
     }
-    t = themes.get(tpl_key, themes["classic_cream"])
+
+    t = themes.get(norm_key, themes["classic_ruled"])
     shell_cls = "tpl-preview-shell tpl-preview-shell-active" if is_active else "tpl-preview-shell"
     badge_cls = "tpl-meta-badge tpl-meta-badge-active" if is_active else "tpl-meta-badge"
     badge_txt = "ACTIVE" if is_active else "SELECT"
     bg_size = f"background-size:{t['grid_size']};" if "grid_size" in t else ""
 
+    hole_html = (
+        '<div style="position:absolute;left:4px;top:20px;width:7px;height:7px;border-radius:50%;background:#D1D5DB;box-shadow:inset 1px 1px 2px rgba(0,0,0,0.4);"></div>'
+        '<div style="position:absolute;left:4px;top:60px;width:7px;height:7px;border-radius:50%;background:#D1D5DB;box-shadow:inset 1px 1px 2px rgba(0,0,0,0.4);"></div>'
+        '<div style="position:absolute;left:4px;top:100px;width:7px;height:7px;border-radius:50%;background:#D1D5DB;box-shadow:inset 1px 1px 2px rgba(0,0,0,0.4);"></div>'
+        if t.get("hole")
+        else ""
+    )
+
+    if t.get("type_tag") == "REALISTIC":
+        # Pure physical handwritten paper preview: text on lines with highlighter and sticky note
+        content_doodle = (
+            f'<div style="margin: 4px 0 0 0; display: flex; flex-direction: column; gap: 4px;">'
+            f'<div style="display: flex; align-items: baseline; gap: 5px;">'
+            f'<span style="font-size: 8.5px; font-weight: 800; color: {t["accent"]};">01.</span>'
+            f'<span style="font-size: 8px; color: {t["ink"]}; font-weight: 600;">Main note written on paper lines</span>'
+            f'</div>'
+            f'<div style="display: flex; align-items: baseline; gap: 5px;">'
+            f'<span style="font-size: 8.5px; font-weight: 800; color: {t["accent"]};">02.</span>'
+            f'<span style="background: {t["hi_bg"]}; color: {t["hi_ink"]}; font-size: 7.5px; font-weight: 700; padding: 1px 4px; border-radius: 2px;">Highlighted Key Formula</span>'
+            f'</div>'
+            f'<div style="background: {t["box_bg"]}; border: 1px dashed {t["accent"]}; border-radius: 4px; padding: 2px 4px; font-size: 7.5px; font-weight: 700; color: {t["ink"]};">'
+            f'📌 Post-It / Taped Pro-Tip Note'
+            f'</div>'
+            f'</div>'
+        )
+    else:
+        # Digital tablet preview: tablet flow cards
+        content_doodle = (
+            f'<div style="background:{t["box_bg"]};border:1.2px solid {t["box_border"]};border-radius:6px;padding:4px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin-top:4px;">'
+            f'<div style="background:{t["pill_bg"]};border:1px solid {t["accent"]};border-radius:3px;padding:2px 2px;font-size:7.5px;font-weight:700;color:{t["ink"]};text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">01 Input</div>'
+            f'<div style="background:{t["pill_bg"]};border:1px solid {t["accent"]};border-radius:3px;padding:2px 2px;font-size:7.5px;font-weight:700;color:{t["ink"]};text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">02 Process</div>'
+            f'<div style="background:{t["pill_bg"]};border:1px solid {t["accent"]};border-radius:3px;padding:2px 2px;font-size:7.5px;font-weight:700;color:{t["ink"]};text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">03 Output</div>'
+            f'</div>'
+        )
+
     return (
         f'<div class="{shell_cls}">'
-        f'<div style="background-color:{t["bg"]};background-image:{t["grid"]};{bg_size}border-radius:10px;padding:10px 12px 10px 22px;position:relative;border:1px solid rgba(20,20,19,0.12);height:132px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;font-family:\'Plus Jakarta Sans\',sans-serif;">'
-        f'<div style="position:absolute;left:14px;top:0;bottom:0;width:1.5px;background:{t["margin"]};"></div>'
+        f'<div style="background-color:{t["bg"]};background-image:{t["grid"]};{bg_size}border-radius:10px;padding:9px 10px 9px 20px;position:relative;border:1px solid rgba(20,20,19,0.12);height:130px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;font-family:\'Plus Jakarta Sans\',sans-serif;">'
+        f'{hole_html}'
+        f'<div style="position:absolute;left:15px;top:0;bottom:0;width:1.5px;background:{t["margin"]};"></div>'
         f'<div>'
-        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
-        f'<span style="font-size:9px;font-weight:800;color:{t["accent"]};letter-spacing:0.04em;">NIWNOTES STUDIO</span>'
-        f'<span style="font-size:8px;font-weight:700;color:{t["muted"]};font-family:\'JetBrains Mono\',monospace;">01/05</span>'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">'
+        f'<span style="font-size:8.5px;font-weight:800;color:{t["accent"]};letter-spacing:0.03em;">NIWNOTES</span>'
+        f'<span class="tpl-tag-pill" style="background:{t["type_bg"]};color:{t["type_color"]};">{t["type_tag"]}</span>'
         f'</div>'
-        f'<div style="font-size:12px;font-weight:800;color:{t["ink"]};line-height:1.15;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Core Architecture Note</div>'
-        f'<div style="display:inline-block;background:{t["hi_bg"]};color:{t["hi_ink"]};font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:4px;">Key Concept Summary</div>'
+        f'<div style="font-size:11.5px;font-weight:800;color:{t["ink"]};line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Actual Lecture Note</div>'
         f'</div>'
-        f'<div style="background:{t["box_bg"]};border:1.5px solid {t["box_border"]};border-radius:7px;padding:5px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;">'
-        f'<div style="background:{t["pill_bg"]};border:1px solid {t["accent"]};border-radius:4px;padding:2px 3px;font-size:8px;font-weight:700;color:{t["ink"]};text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">01 Input</div>'
-        f'<div style="background:{t["pill_bg"]};border:1px solid {t["accent"]};border-radius:4px;padding:2px 3px;font-size:8px;font-weight:700;color:{t["ink"]};text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">02 Process</div>'
-        f'<div style="background:{t["pill_bg"]};border:1px solid {t["accent"]};border-radius:4px;padding:2px 3px;font-size:8px;font-weight:700;color:{t["ink"]};text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">03 Output</div>'
-        f'</div>'
+        f'{content_doodle}'
         f'</div>'
         f'<div class="tpl-meta-bar">'
         f'<span class="tpl-meta-name">{t["name"]}</span>'
@@ -601,7 +688,12 @@ if "selected_topic" not in st.session_state:
     )
 
 if "selected_template" not in st.session_state:
-    st.session_state["selected_template"] = "classic_cream"
+    st.session_state["selected_template"] = "classic_ruled"
+else:
+    # Normalize any legacy key
+    st.session_state["selected_template"] = normalize_template_key(
+        st.session_state["selected_template"]
+    )
 
 if "selected_language" not in st.session_state:
     st.session_state["selected_language"] = "Sinhala_Mix"
@@ -626,21 +718,21 @@ st.markdown(
     <div class="woday-brand">
         <div class="woday-logo-mark">N</div>
         <span class="woday-brand-name">NIWNOTES</span>
-        <span class="woday-brand-tag">University Social Learning Studio</span>
+        <span class="woday-brand-tag">University Handwritten Study Studio</span>
     </div>
     <div class="woday-nav-pills">
         <span class="woday-pill">8 University Tracks</span>
-        <span class="woday-pill">5 / 10 / 30 Pages</span>
+        <span class="woday-pill">2 Paper + 2 Digital Styles</span>
         <span class="woday-pill">Instant GPU Export</span>
         {api_badge_html}
     </div>
 </div>
 
 <div class="woday-hero">
-    <div class="woday-eyebrow"><span>NIWNOTES 3.0</span> Built for University Students & Tech Creators</div>
-    <h1 class="woday-title">Turn complex lectures into shareable handwritten study decks.</h1>
+    <div class="woday-eyebrow"><span>NIWNOTES 3.5</span> Authentic Human Handwriting Studio</div>
+    <h1 class="woday-title">Turn complex lectures into authentic handwritten study decks.</h1>
     <p class="woday-subtitle">
-        Pick your university subject, select a top-ranked topic or enter your own lecture title, and generate a crisp handwritten carousel with ready-to-post LinkedIn and Facebook captions.
+        Pick your university subject, select a top-ranked topic or type a custom lecture, and synthesize a genuine pen-and-paper handwritten carousel with ready-to-post LinkedIn & Facebook captions.
     </p>
 </div>
 """,
@@ -779,9 +871,9 @@ with right_col:
             <div class="section-header-row">
                 <div class="section-step-badge">
                     <span class="section-step-num">STEP 02</span>
-                    <span>Handwritten Notebook Template</span>
+                    <span>Handwritten Templates (2 Realistic + 2 Digital)</span>
                 </div>
-                <span class="section-meta-hint">Visual Sample Preview</span>
+                <span class="section-meta-hint">Human Touch Styles</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -818,9 +910,9 @@ with right_col:
             <div class="section-header-row">
                 <div class="section-step-badge">
                     <span class="section-step-num">STEP 03</span>
-                    <span>Note & Social Caption Language</span>
+                    <span>Handwritten Note Language</span>
                 </div>
-                <span class="section-meta-hint">Syncs Slides + Caption</span>
+                <span class="section-meta-hint">Authentic Script</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -856,7 +948,7 @@ with right_col:
                     <span class="section-step-num">STEP 04</span>
                     <span>Study Deck Length</span>
                 </div>
-                <span class="section-meta-hint">Parallel AI Synthesis</span>
+                <span class="section-meta-hint">Multi-Page Carousel</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -892,9 +984,11 @@ with right_col:
                 st.session_state["selected_pages"] = 30
                 st.rerun()
 
-        active_tpl_name = NOTE_TEMPLATES.get(
-            st.session_state["selected_template"], {}
-        ).get("short_name", "Classic Cream")
+        active_tpl_meta = NOTE_TEMPLATES.get(
+            st.session_state["selected_template"], NOTE_TEMPLATES["classic_ruled"]
+        )
+        active_tpl_name = active_tpl_meta.get("name", "Classic Ruled Paper")
+        active_tpl_cat = active_tpl_meta.get("category", "Realistic")
         active_lang_label = (
             "Sinhala Kuppi Mix" if curr_lang == "Sinhala_Mix" else "Pure English"
         )
@@ -902,16 +996,16 @@ with right_col:
         st.markdown(
             f"""
             <div class="config-summary-strip">
-                <span>Template: <strong>{active_tpl_name}</strong></span>
+                <span>Template: <strong>{active_tpl_name} ({active_tpl_cat})</strong></span>
                 <span>Language: <strong>{active_lang_label}</strong></span>
-                <span>Deck Size: <strong>{curr_pages} Slides</strong></span>
+                <span>Deck: <strong>{curr_pages} Slides</strong></span>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
         generate_clicked = st.button(
-            f"Generate {curr_pages}-Page NIWNOTES Study Deck",
+            f"Synthesize {curr_pages}-Page Handwritten Study Deck",
             type="primary",
             use_container_width=True,
         )
@@ -957,10 +1051,10 @@ if "generated_guide" in st.session_state:
         topic=st.session_state.get(
             "generated_topic", st.session_state.get("selected_topic", "Study_Notes")
         ),
-        template_key=st.session_state.get("selected_template", "classic_cream"),
+        template_key=st.session_state.get("selected_template", "classic_ruled"),
         subject_category=st.session_state.get(
             "generated_subject", st.session_state.get("selected_subject", default_subject)
         ),
         language=st.session_state.get("selected_language", "Sinhala_Mix"),
     )
-    components.html(studio_html, height=1320, scrolling=True)
+    components.html(studio_html, height=1420, scrolling=True)
