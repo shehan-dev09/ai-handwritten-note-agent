@@ -26,7 +26,7 @@ st.set_page_config(
 )
 
 # =====================================================================
-# 2. Woday-Inspired macOS Light Mode CSS Design System
+# 2. Woday-Inspired macOS Light Mode CSS Design System (Desktop + Mobile)
 # =====================================================================
 st.markdown(
     """
@@ -44,10 +44,11 @@ st.markdown(
     --accent-coral: #FF5A36;
 }
 
-.stApp {
+html, body, .stApp {
     background-color: var(--bg-canvas) !important;
     color: var(--text-main) !important;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    overflow-x: hidden !important;
 }
 
 #MainMenu {visibility: hidden;}
@@ -56,12 +57,12 @@ header {background: transparent !important;}
 
 .block-container {
     max-width: 1280px !important;
-    padding-top: 1.4rem !important;
-    padding-bottom: 4rem !important;
+    padding-top: 1.2rem !important;
+    padding-bottom: 3rem !important;
 }
 
 .woday-nav {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(16px);
     border: 1px solid var(--border-hairline);
     border-radius: 999px;
@@ -69,7 +70,9 @@ header {background: transparent !important;}
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 22px;
     box-shadow: 0 4px 20px -4px rgba(20, 20, 19, 0.04);
 }
 .woday-brand {
@@ -94,34 +97,39 @@ header {background: transparent !important;}
     font-family: 'JetBrains Mono', monospace;
     font-size: 15px;
     font-weight: 800;
+    flex-shrink: 0;
 }
 .woday-nav-pills {
     display: flex;
     align-items: center;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 .woday-pill {
     background: var(--bg-subtle);
     color: var(--text-muted);
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 600;
-    padding: 6px 13px;
+    padding: 5px 12px;
     border-radius: 999px;
     border: 1px solid var(--border-hairline);
+    white-space: nowrap;
 }
 .woday-pill-active {
     background: #DCFCE7;
     color: #15803D;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 700;
-    padding: 6px 13px;
+    padding: 5px 12px;
     border-radius: 999px;
+    white-space: nowrap;
 }
 
 .woday-hero {
     text-align: center;
     max-width: 780px;
-    margin: 0 auto 24px auto;
+    margin: 0 auto 22px auto;
+    padding: 0 6px;
 }
 .woday-eyebrow {
     display: inline-flex;
@@ -131,7 +139,7 @@ header {background: transparent !important;}
     border: 1px solid var(--border-hairline);
     border-radius: 999px;
     padding: 5px 14px;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 600;
     color: var(--text-muted);
     margin-bottom: 12px;
@@ -141,10 +149,11 @@ header {background: transparent !important;}
     height: 8px;
     border-radius: 50%;
     background: var(--accent-coral);
+    flex-shrink: 0;
 }
 .woday-title {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 2.55rem;
+    font-size: 2.5rem;
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 1.1;
@@ -152,7 +161,7 @@ header {background: transparent !important;}
     margin-bottom: 8px;
 }
 .woday-subtitle {
-    font-size: 0.98rem;
+    font-size: 0.96rem;
     color: var(--text-muted);
     line-height: 1.55;
 }
@@ -172,10 +181,12 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     padding-bottom: 12px;
     margin-bottom: 14px;
     border-bottom: 1px solid var(--border-hairline);
+    gap: 8px;
 }
 .mac-dots {
     display: flex;
     gap: 6px;
+    flex-shrink: 0;
 }
 .mac-dot {
     width: 10px;
@@ -187,16 +198,20 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 .mac-dot-g { background: #27C93F; }
 .mac-card-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.73rem;
+    font-size: 0.72rem;
     font-weight: 600;
     color: var(--text-soft);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .section-step-title {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.02rem;
+    font-size: 1.0rem;
     font-weight: 700;
     color: var(--text-main);
     margin-bottom: 8px;
@@ -212,6 +227,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     font-weight: 700;
     padding: 2px 8px;
     border-radius: 6px;
+    flex-shrink: 0;
 }
 
 .rank-card {
@@ -219,7 +235,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     border: 1.5px solid rgba(20, 20, 19, 0.08);
     border-radius: 14px;
     padding: 11px 14px;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 .rank-card-active {
     background: #FFFFFF;
@@ -230,28 +246,33 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 6px;
     margin-bottom: 4px;
 }
 .rank-number {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     font-weight: 700;
     padding: 2px 8px;
     border-radius: 6px;
     background: #141413;
     color: #FFFFFF;
+    white-space: nowrap;
 }
 .rank-number-top {
     background: #FF5A36;
     color: #FFFFFF;
 }
 .rank-cat-badge {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: #575653;
     background: #EAE8E1;
     padding: 2px 9px;
     border-radius: 999px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .rank-title {
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -262,18 +283,18 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     margin-bottom: 3px;
 }
 .rank-summary {
-    font-size: 0.77rem;
+    font-size: 0.76rem;
     color: #575653;
     line-height: 1.38;
 }
 
-/* Template Miniature Sample Cards (Pure HTML/CSS, Zero Line-Wrap) */
+/* Template Miniature Sample Cards */
 .tpl-card {
     border-radius: 16px;
     padding: 10px 10px 12px 10px;
     border: 1.5px solid rgba(20, 20, 19, 0.09);
     background: #FFFFFF;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     transition: all 0.16s ease;
 }
 .tpl-card-active {
@@ -282,9 +303,9 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     box-shadow: 0 8px 22px -4px rgba(20, 20, 19, 0.12);
 }
 .tpl-sheet {
-    height: 118px;
+    height: 116px;
     border-radius: 10px;
-    padding: 10px 12px 10px 22px;
+    padding: 10px 10px 10px 20px;
     position: relative;
     overflow: hidden;
     border: 1px solid rgba(20, 20, 19, 0.10);
@@ -297,12 +318,12 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     position: absolute;
     top: 0;
     bottom: 0;
-    left: 13px;
+    left: 12px;
     width: 2px;
 }
 .tpl-head-title {
     font-family: 'Caveat', cursive, sans-serif;
-    font-size: 1.18rem;
+    font-size: 1.15rem;
     font-weight: 700;
     line-height: 1.05;
     white-space: nowrap;
@@ -313,21 +334,23 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: nowrap;
+    overflow: hidden;
 }
 .tpl-hl-tag {
     font-family: 'Caveat', cursive, sans-serif;
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     font-weight: 700;
-    padding: 2px 8px;
+    padding: 2px 7px;
     border-radius: 5px;
     line-height: 1.1;
     white-space: nowrap;
 }
 .tpl-core-tag {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.66rem;
+    font-size: 0.64rem;
     font-weight: 700;
-    padding: 3px 7px;
+    padding: 3px 6px;
     border-radius: 5px;
     line-height: 1.1;
     white-space: nowrap;
@@ -335,14 +358,14 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 .tpl-step-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
+    gap: 4px;
     width: 100%;
 }
 .tpl-step-pill {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.60rem;
+    font-size: 0.58rem;
     font-weight: 700;
-    padding: 4px 3px;
+    padding: 4px 2px;
     border-radius: 5px;
     text-align: center;
     white-space: nowrap;
@@ -354,18 +377,23 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 4px;
     padding: 0 2px;
 }
 .tpl-meta-name {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.86rem;
+    font-size: 0.84rem;
     font-weight: 800;
     color: #141413;
+    white-space: nowrap;
 }
 .tpl-meta-badge {
-    font-size: 0.73rem;
+    font-size: 0.71rem;
     color: #787774;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stButton > button[kind="primary"] {
@@ -373,25 +401,110 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     color: #FFFFFF !important;
     border: 1px solid #141413 !important;
     border-radius: 12px !important;
-    padding: 0.52rem 0.9rem !important;
+    padding: 0.52rem 0.85rem !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 700 !important;
-    font-size: 0.84rem !important;
+    font-size: 0.83rem !important;
     box-shadow: 0 4px 12px rgba(20, 20, 19, 0.12) !important;
+    min-height: 42px !important;
 }
 .stButton > button[kind="secondary"] {
     background-color: #FFFFFF !important;
     color: #141413 !important;
     border: 1px solid rgba(20, 20, 19, 0.12) !important;
     border-radius: 12px !important;
-    padding: 0.52rem 0.9rem !important;
+    padding: 0.52rem 0.85rem !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 700 !important;
-    font-size: 0.84rem !important;
+    font-size: 0.83rem !important;
+    min-height: 42px !important;
 }
 .stButton > button[kind="secondary"]:hover {
     background-color: #F3F2EE !important;
     border-color: #141413 !important;
+}
+
+/* =====================================================================
+   Mobile & Tablet Responsive Media Queries
+   ===================================================================== */
+@media (max-width: 768px) {
+    .block-container {
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
+        padding-top: 0.75rem !important;
+        padding-bottom: 2rem !important;
+    }
+    .woday-nav {
+        border-radius: 18px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+    }
+    .woday-brand {
+        font-size: 1.02rem;
+    }
+    .woday-pill {
+        display: none;
+    }
+    .woday-pill-active {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+    }
+    .woday-hero {
+        margin-bottom: 16px;
+    }
+    .woday-eyebrow {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+    }
+    .woday-title {
+        font-size: 1.72rem;
+        line-height: 1.15;
+    }
+    .woday-subtitle {
+        font-size: 0.86rem;
+        line-height: 1.45;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 16px !important;
+        padding: 12px !important;
+    }
+    .mac-card-bar {
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+    }
+    .mac-card-label {
+        font-size: 0.65rem;
+    }
+    .section-step-title {
+        font-size: 0.92rem;
+    }
+    .rank-card {
+        padding: 10px 12px;
+        margin-bottom: 2px;
+    }
+    .rank-title {
+        font-size: 0.85rem;
+    }
+    .rank-summary {
+        font-size: 0.74rem;
+    }
+    .tpl-sheet {
+        height: 106px;
+        padding: 8px 8px 8px 18px;
+    }
+    .tpl-head-title {
+        font-size: 1.05rem;
+    }
+    .tpl-step-pill {
+        font-size: 0.56rem;
+        padding: 3px 2px;
+    }
+    .stButton > button[kind="primary"],
+    .stButton > button[kind="secondary"] {
+        font-size: 0.8rem !important;
+        padding: 0.45rem 0.7rem !important;
+        min-height: 40px !important;
+    }
 }
 </style>
 """,
@@ -403,7 +516,7 @@ def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
     """
     Renders a clean HTML/CSS miniature preview card for each template.
     Uses unindented markup so Streamlit never converts it to a Markdown code block,
-    and strict CSS grid + nowrap so '01 Input', '02 Process', '03 Output' never wrap.
+    and strict CSS grid + nowrap so '01 Input', '02 Process', '03 Output' never wrap on desktop or mobile.
     """
     styles = {
         "classic_cream": {
@@ -612,7 +725,7 @@ with left_col:
             card_cls = "rank-card rank-card-active" if is_selected else "rank-card"
             num_cls = "rank-number rank-number-top" if idx == 0 else "rank-number"
 
-            r_col_card, r_col_btn = st.columns([4.3, 1.0])
+            r_col_card, r_col_btn = st.columns([4.2, 1.1], vertical_alignment="center")
             with r_col_card:
                 st.markdown(
                     f'<div class="{card_cls}">'
@@ -626,7 +739,6 @@ with left_col:
                     unsafe_allow_html=True,
                 )
             with r_col_btn:
-                st.write("")
                 btn_label = "Selected" if is_selected else f"Pick #{idx + 1}"
                 if st.button(
                     btn_label,
@@ -772,7 +884,7 @@ with right_col:
 # 6. Zero-Wait Interactive Sketchnote & Social Post Studio
 # =====================================================================
 if st.session_state.carousel_data:
-    st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
     studio_html = build_interactive_studio_html(
         carousel_data=st.session_state.carousel_data,
         topic=st.session_state.active_topic_title,
@@ -780,4 +892,4 @@ if st.session_state.carousel_data:
         subject_category=st.session_state.selected_subject,
         language=st.session_state.selected_language,
     )
-    components.html(studio_html, height=1020, scrolling=True)
+    components.html(studio_html, height=1320, scrolling=True)

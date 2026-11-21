@@ -388,7 +388,7 @@ def generate_5_page_study_guide(
 
 
 # =====================================================================
-# 4. HTML/CSS Sketchnote Page Builder & Zero-Wait Interactive Studio
+# 4. HTML/CSS Sketchnote Page Builder & Responsive Mobile Studio
 # =====================================================================
 def _format_highlight(text: str) -> str:
     return (
@@ -765,7 +765,9 @@ def build_interactive_studio_html(
     language: str = "Sinhala_Mix",
 ) -> str:
     """
-    Builds a self-contained, zero-wait Woday-styled Interactive Studio HTML component without emojis.
+    Builds a self-contained, mobile-responsive Woday-styled Interactive Studio HTML component.
+    Dynamically scales the 1000x1250 slide reader to fit any mobile or desktop screen width,
+    supports touch swipe navigation on phones, and exports full 1000x1250 PNGs.
     """
     t = NOTE_TEMPLATES.get(template_id, NOTE_TEMPLATES["classic_cream"])
     page_css = _get_template_css(t)
@@ -794,7 +796,7 @@ def build_interactive_studio_html(
         <div class="studio-thumb-card {active_cls}" onclick="selectSlide({idx})" id="thumb-btn-{idx}">
             <div class="studio-thumb-header">
                 <span class="studio-thumb-num">#{page.page_number:02d}</span>
-                <span class="studio-thumb-title">{page.title[:22]}</span>
+                <span class="studio-thumb-title">{page.title[:20]}</span>
             </div>
             <div class="studio-thumb-viewport">
                 <div class="studio-thumb-scaler">
@@ -817,6 +819,7 @@ def build_interactive_studio_html(
     <html>
     <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Patrick+Hand&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+Sinhala:wght@500;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
@@ -830,49 +833,52 @@ def build_interactive_studio_html(
             font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
             color: #141413;
             margin: 0;
-            padding: 4px 2px 20px 2px;
+            padding: 4px 2px 24px 2px;
+            overflow-x: hidden;
         }}
 
         .studio-bar {{
             background: #FFFFFF;
             border: 1px solid rgba(20, 20, 19, 0.09);
             border-radius: 18px;
-            padding: 14px 20px;
+            padding: 14px 18px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
             box-shadow: 0 8px 24px -6px rgba(20, 20, 19, 0.05);
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }}
         .studio-bar-left {{
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }}
         .studio-badge-green {{
             background: #DCFCE7;
             color: #15803D;
             font-weight: 800;
-            font-size: 12px;
-            padding: 5px 12px;
+            font-size: 11.5px;
+            padding: 5px 11px;
             border-radius: 999px;
+            white-space: nowrap;
         }}
         .studio-badge-gray {{
             background: #F3F2EE;
             color: #575653;
             font-weight: 700;
-            font-size: 12px;
-            padding: 5px 12px;
+            font-size: 11.5px;
+            padding: 5px 11px;
             border-radius: 999px;
             border: 1px solid rgba(20,20,19,0.07);
+            white-space: nowrap;
         }}
         .studio-actions {{
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }}
         .btn-woday-primary {{
@@ -880,29 +886,30 @@ def build_interactive_studio_html(
             color: #FFFFFF;
             border: none;
             border-radius: 12px;
-            padding: 10px 18px;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.16s ease;
-            box-shadow: 0 4px 12px rgba(20, 20, 19, 0.14);
-        }}
-        .btn-woday-primary:hover {{
-            background: #292826;
-            transform: translateY(-1px);
-        }}
-        .btn-woday-secondary {{
-            background: #F3F2EE;
-            color: #141413;
-            border: 1px solid rgba(20, 20, 19, 0.12);
-            border-radius: 12px;
             padding: 10px 16px;
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 13px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.16s ease;
+            box-shadow: 0 4px 12px rgba(20, 20, 19, 0.14);
+            white-space: nowrap;
+        }}
+        .btn-woday-primary:hover {{
+            background: #292826;
+        }}
+        .btn-woday-secondary {{
+            background: #F3F2EE;
+            color: #141413;
+            border: 1px solid rgba(20, 20, 19, 0.12);
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.16s ease;
+            white-space: nowrap;
         }}
         .btn-woday-secondary:hover {{
             background: #EAE8E1;
@@ -910,10 +917,11 @@ def build_interactive_studio_html(
 
         .studio-thumb-strip {{
             display: flex;
-            gap: 12px;
+            gap: 10px;
             overflow-x: auto;
-            padding: 6px 4px 14px 4px;
-            margin-bottom: 18px;
+            -webkit-overflow-scrolling: touch;
+            padding: 4px 2px 12px 2px;
+            margin-bottom: 16px;
             scrollbar-width: thin;
         }}
         .studio-thumb-card {{
@@ -921,15 +929,11 @@ def build_interactive_studio_html(
             border: 2px solid rgba(20, 20, 19, 0.08);
             border-radius: 14px;
             padding: 8px;
-            width: 176px;
+            width: 164px;
             flex-shrink: 0;
             cursor: pointer;
             transition: all 0.16s ease;
             box-shadow: 0 4px 12px rgba(20, 20, 19, 0.04);
-        }}
-        .studio-thumb-card:hover {{
-            transform: translateY(-2px);
-            border-color: rgba(20, 20, 19, 0.25);
         }}
         .studio-thumb-card.active {{
             border-color: #141413;
@@ -949,8 +953,8 @@ def build_interactive_studio_html(
             font-weight: 700;
             background: #141413;
             color: #FFFFFF;
-            padding: 2px 7px;
-            border-radius: 6px;
+            padding: 2px 6px;
+            border-radius: 5px;
         }}
         .studio-thumb-title {{
             font-size: 11px;
@@ -961,15 +965,15 @@ def build_interactive_studio_html(
             text-overflow: ellipsis;
         }}
         .studio-thumb-viewport {{
-            width: 156px;
-            height: 195px;
+            width: 144px;
+            height: 180px;
             overflow: hidden;
             border-radius: 8px;
             position: relative;
             border: 1px solid rgba(0,0,0,0.06);
         }}
         .studio-thumb-scaler {{
-            transform: scale(0.156);
+            transform: scale(0.144);
             transform-origin: top left;
             width: 1000px;
             height: 1250px;
@@ -978,25 +982,21 @@ def build_interactive_studio_html(
 
         .studio-main-grid {{
             display: grid;
-            grid-template-columns: 520px 1fr;
+            grid-template-columns: minmax(300px, 510px) 1fr;
             gap: 20px;
             align-items: start;
-        }}
-        @media (max-width: 980px) {{
-            .studio-main-grid {{
-                grid-template-columns: 1fr;
-            }}
         }}
 
         .inspector-card {{
             background: #FFFFFF;
             border: 1px solid rgba(20, 20, 19, 0.09);
             border-radius: 20px;
-            padding: 16px;
+            padding: 14px;
             box-shadow: 0 12px 30px -8px rgba(20, 20, 19, 0.06);
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%;
         }}
         .inspector-toolbar {{
             width: 100%;
@@ -1004,29 +1004,34 @@ def build_interactive_studio_html(
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
+            gap: 8px;
         }}
         .inspector-slide-counter {{
             font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 700;
             color: #141413;
             background: #F3F2EE;
             padding: 6px 12px;
             border-radius: 8px;
+            white-space: nowrap;
         }}
         .inspector-viewport {{
-            width: 480px;
+            width: 100%;
+            max-width: 480px;
             height: 600px;
             overflow: hidden;
             border-radius: 12px;
             border: 1px solid rgba(20, 20, 19, 0.10);
             box-shadow: 0 10px 24px rgba(0,0,0,0.08);
             position: relative;
+            touch-action: pan-y;
         }}
         .inspector-slide-frame {{
             display: none;
-            width: 480px;
-            height: 600px;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }}
         .inspector-slide-frame.active {{
             display: block;
@@ -1042,8 +1047,9 @@ def build_interactive_studio_html(
             background: #FFFFFF;
             border: 1px solid rgba(20, 20, 19, 0.09);
             border-radius: 20px;
-            padding: 22px;
+            padding: 20px;
             box-shadow: 0 12px 30px -8px rgba(20, 20, 19, 0.06);
+            width: 100%;
         }}
         .caption-header {{
             display: flex;
@@ -1051,20 +1057,20 @@ def build_interactive_studio_html(
             align-items: center;
             margin-bottom: 12px;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
         }}
         .caption-title {{
-            font-size: 17px;
+            font-size: 16.5px;
             font-weight: 800;
             color: #141413;
         }}
         .caption-textarea {{
             width: 100%;
-            height: 410px;
+            height: 390px;
             background: #F7F6F2;
             border: 1px solid rgba(20, 20, 19, 0.10);
             border-radius: 14px;
-            padding: 16px;
+            padding: 14px;
             font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', sans-serif;
             font-size: 14px;
             line-height: 1.65;
@@ -1085,6 +1091,55 @@ def build_interactive_studio_html(
             padding: 5px 11px;
             border-radius: 999px;
             border: 1px solid rgba(20, 20, 19, 0.08);
+        }}
+
+        /* Mobile & Tablet Breakpoints inside Studio */
+        @media (max-width: 920px) {{
+            .studio-main-grid {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+        @media (max-width: 640px) {{
+            .studio-bar {{
+                padding: 12px;
+                border-radius: 14px;
+            }}
+            .studio-actions {{
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }}
+            .studio-actions button {{
+                width: 100%;
+                text-align: center;
+            }}
+            .studio-thumb-card {{
+                width: 132px;
+                padding: 6px;
+            }}
+            .studio-thumb-viewport {{
+                width: 116px;
+                height: 145px;
+            }}
+            .studio-thumb-scaler {{
+                transform: scale(0.116);
+            }}
+            .inspector-card {{
+                padding: 10px;
+                border-radius: 16px;
+            }}
+            .caption-card {{
+                padding: 14px;
+                border-radius: 16px;
+            }}
+            .caption-header button {{
+                width: 100%;
+            }}
+            .caption-textarea {{
+                height: 270px;
+                font-size: 13.5px;
+            }}
         }}
     </style>
     </head>
@@ -1118,7 +1173,7 @@ def build_interactive_studio_html(
                     <span class="inspector-slide-counter" id="slide-counter-label">Slide 01 / {total_pages:02d}</span>
                     <button class="btn-woday-secondary" onclick="stepSlide(1)">Next</button>
                 </div>
-                <div class="inspector-viewport">
+                <div class="inspector-viewport" id="inspector-viewport">
                     {inspector_slides_html}
                 </div>
             </div>
@@ -1149,6 +1204,49 @@ def build_interactive_studio_html(
             const totalSlides = {total_pages};
             const defaultCaption = {caption_json};
 
+            function updateInspectorScale() {{
+                const viewport = document.getElementById('inspector-viewport');
+                if (!viewport) return;
+                const vw = viewport.clientWidth;
+                if (vw <= 0) return;
+                const scale = vw / 1000;
+                const vh = Math.round(1250 * scale);
+                viewport.style.height = vh + 'px';
+
+                const scalers = document.querySelectorAll('.inspector-scaler');
+                scalers.forEach(el => {{
+                    el.style.transform = `scale(${{scale}})`;
+                }});
+            }}
+
+            window.addEventListener('resize', updateInspectorScale);
+            window.addEventListener('DOMContentLoaded', () => {{
+                updateInspectorScale();
+                setTimeout(updateInspectorScale, 120);
+            }});
+            if (window.ResizeObserver) {{
+                const ro = new ResizeObserver(() => updateInspectorScale());
+                const vp = document.getElementById('inspector-viewport');
+                if (vp) ro.observe(vp);
+            }}
+
+            // Mobile Touch Swipe Support on Slide Inspector
+            let touchStartX = 0;
+            let touchEndX = 0;
+            const vpElem = document.getElementById('inspector-viewport');
+            if (vpElem) {{
+                vpElem.addEventListener('touchstart', e => {{
+                    touchStartX = e.changedTouches[0].screenX;
+                }}, {{passive: true}});
+                vpElem.addEventListener('touchend', e => {{
+                    touchEndX = e.changedTouches[0].screenX;
+                    const diff = touchStartX - touchEndX;
+                    if (Math.abs(diff) > 45) {{
+                        stepSlide(diff > 0 ? 1 : -1);
+                    }}
+                }}, {{passive: true}});
+            }}
+
             function selectSlide(idx) {{
                 if (idx < 0 || idx >= totalSlides) return;
                 activeSlideIndex = idx;
@@ -1159,6 +1257,7 @@ def build_interactive_studio_html(
                     if (i === idx) {{
                         thumb.classList.add('active');
                         frame.classList.add('active');
+                        thumb.scrollIntoView({{ behavior: 'smooth', block: 'nearest', inline: 'center' }});
                     }} else {{
                         thumb.classList.remove('active');
                         frame.classList.remove('active');
@@ -1168,6 +1267,7 @@ def build_interactive_studio_html(
                 const numStr = String(idx + 1).padStart(2, '0');
                 const totStr = String(totalSlides).padStart(2, '0');
                 document.getElementById('slide-counter-label').innerText = `Slide ${{numStr}} / ${{totStr}}`;
+                updateInspectorScale();
             }}
 
             function stepSlide(delta) {{
