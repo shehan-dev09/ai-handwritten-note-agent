@@ -1,91 +1,168 @@
+from concurrent.futures import ThreadPoolExecutor
 import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from note_generator import get_working_models
 from pydantic import BaseModel, Field
 import requests
 
 load_dotenv()
 
-API_KEY = os.getenv("GEMINI_API_KEY")
-if not API_KEY:
-    raise ValueError("GEMINI_API_KEY not found. Please check your .env file.")
-
-client = genai.Client(api_key=API_KEY)
+# =====================================================================
+# UNIVERSITY SUBJECT TRACKS & LIVE API QUERIES
+# =====================================================================
+UNIVERSITY_SUBJECTS = {
+    "AI & Machine Learning": {
+        "hn_query": "LLM OR AI Agent OR Machine Learning OR Deep Learning OR RAG",
+        "devto_tag": "ai",
+        "use_hf": True,
+    },
+    "Software Engineering & Full-Stack": {
+        "hn_query": "Software Architecture OR React OR Nextjs OR Backend OR Microservices",
+        "devto_tag": "webdev",
+        "use_hf": False,
+    },
+    "Cybersecurity & Ethical Hacking": {
+        "hn_query": "Cybersecurity OR Zero Trust OR Vulnerability OR Cryptography OR Pentesting",
+        "devto_tag": "security",
+        "use_hf": False,
+    },
+    "Data Science & Big Data Analytics": {
+        "hn_query": "Data Engineering OR SQL OR Apache Spark OR Pandas OR Data Pipeline",
+        "devto_tag": "datascience",
+        "use_hf": False,
+    },
+    "Cloud Computing & DevOps": {
+        "hn_query": "Kubernetes OR Docker OR AWS OR Terraform OR CI CD",
+        "devto_tag": "devops",
+        "use_hf": False,
+    },
+    "Computer Networks & Distributed Systems": {
+        "hn_query": "Distributed Systems OR TCP IP OR gRPC OR Load Balancing OR Consensus",
+        "devto_tag": "architecture",
+        "use_hf": False,
+    },
+    "IoT, Robotics & Embedded Systems": {
+        "hn_query": "Robotics OR Embedded OR RTOS OR Arduino OR Edge AI",
+        "devto_tag": "iot",
+        "use_hf": False,
+    },
+    "UI/UX & Product Engineering": {
+        "hn_query": "Design Systems OR UI UX OR Frontend Performance OR Accessibility",
+        "devto_tag": "ux",
+        "use_hf": False,
+    },
+}
 
 
 class ViralTopic(BaseModel):
     topic_title: str = Field(
-        description="Clear, educational AI/ML topic title suitable for a 5-page study note"
+        description="Clear, specific technical concept title suitable for a 5-page university study note"
     )
-    why_viral: str = Field(
-        description="1 short sentence on why this topic is trending and valuable right now"
+    category: str = Field(
+        description="Sub-discipline tag (e.g. GenAI, Backend, Cloud, Security)"
+    )
+    why_it_is_viral: str = Field(
+        description="1 short sentence on why students and engineers should learn this now"
+    )
+    beginner_hook: str = Field(
+        description="Engaging hook question for social media post"
     )
 
 
 class TrendingTopicsList(BaseModel):
     topics: list[ViralTopic] = Field(
-        description="List of exactly 5 high-impact viral AI/ML topics"
+        description="Top 5 trending study topics for university students",
+        min_length=5,
+        max_length=5,
     )
 
 
-def fetch_raw_ai_news() -> list[str]:
-    """Fetches real-time trending AI/ML discussions from HuggingFace Papers & HackerNews (100% Free, No API Keys)."""
+def _fetch_hf() -> list[str]:
+    try:
+        resp = requests.get("https://huggingface.co/api/daily_papers", timeout=4)
+        if resp.status_code == 200:
+            return [
+                f"[HF Research] {item.get('title', '')}" for item in resp.json()[:8]
+            ]
+    except Exception:
+        pass
+    return []
+
+
+def _fetch_hn(query: str) -> list[str]:
+    try:
+        url = f"https://hn.algolia.com/api/v1/search?query={requests.utils.quote(query)}&tags=story&hitsPerPage=10"
+        resp = requests.get(url, timeout=4)
+        if resp.status_code == 200:
+            return [
+                f"[Tech Trend] {hit.get('title', '')}"
+                for hit in resp.json().get("hits", [])
+                if hit.get("title")
+            ]
+    except Exception:
+        pass
+    return []
+
+
+def _fetch_devto(tag: str) -> list[str]:
+    try:
+        url = f"https://dev.to/api/articles?tag={tag}&top=7&per_page=10"
+        resp = requests.get(url, timeout=4)
+        if resp.status_code == 200:
+            return [
+                f"[Developer Guide] {art.get('title', '')}" for art in resp.json()[:8]
+            ]
+    except Exception:
+        pass
+    return []
+
+
+def fetch_raw_subject_news(subject_category: str = "AI & Machine Learning") -> str:
+    """Concurrently scrapes live technical feeds for the selected university subject in <2 seconds."""
+    cfg = UNIVERSITY_SUBJECTS.get(
+        subject_category, UNIVERSITY_SUBJECTS["AI & Machine Learning"]
+    )
     headlines = []
-    headers = {"User-Agent": "Mozilla/5.0 (AI-Study-Note-Agent/1.0)"}
 
-    # 1. Fetch from HuggingFace Daily Trending Papers API
-    try:
-        resp = requests.get(
-            "https://huggingface.co/api/daily_papers",
-            headers=headers,
-            timeout=8,
-        )
-        if resp.status_code == 200:
-            papers = resp.json()
-            for item in papers[:10]:
-                title = item.get("title")
-                if title:
-                    headlines.append(f"[HuggingFace Trending] {title}")
-    except Exception:
-        pass
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [
+            executor.submit(_fetch_hn, cfg["hn_query"]),
+            executor.submit(_fetch_devto, cfg["devto_tag"]),
+        ]
+        if cfg["use_hf"]:
+            futures.append(executor.submit(_fetch_hf))
 
-    # 2. Fetch from HackerNews Algolia API (Latest AI/LLM stories)
-    try:
-        hn_url = "https://hn.algolia.com/api/v1/search?query=LLM+OR+AI+Agent+OR+Machine+Learning&tags=story&hitsPerPage=12"
-        resp = requests.get(hn_url, headers=headers, timeout=8)
-        if resp.status_code == 200:
-            hits = resp.json().get("hits", [])
-            for hit in hits:
-                title = hit.get("title")
-                if title:
-                    headlines.append(f"[HackerNews AI] {title}")
-    except Exception:
-        pass
+        for fut in futures:
+            headlines.extend(fut.result())
 
-    return headlines
+    if not headlines:
+        return f"Core university concepts and modern industry architectures in {subject_category}."
+
+    return "\n".join(headlines[:20])
 
 
-def discover_viral_topics(working_models: list[str]) -> list[ViralTopic]:
-    """Analyzes live AI news and curates 5 beginner-friendly viral study note topics."""
-    print(
-        "[INFO] Trend Researcher Agent is scanning HuggingFace & HackerNews for live AI trends..."
-    )
-    raw_headlines = fetch_raw_ai_news()
-
-    news_context = (
-        "\n".join(raw_headlines)
-        if raw_headlines
-        else "General trending AI/ML topics in 2026"
-    )
+def discover_viral_topics(
+    working_models: list[str],
+    subject_category: str = "AI & Machine Learning",
+    api_key: str = None,
+) -> list[ViralTopic]:
+    """Uses Gemini 3.x to extract 5 high-value study topics for the chosen university subject."""
+    resolved_key = api_key or os.getenv("GEMINI_API_KEY")
+    client = genai.Client(api_key=resolved_key)
+    raw_news = fetch_raw_subject_news(subject_category)
 
     prompt = f"""
-    You are an AI/ML Trend Researcher Agent for a viral LinkedIn & Facebook Tech Educator.
-    Below are live trending headlines from the AI community today:
-    {news_context}
+    You are an Academic & Industry Curriculum Scout for 'NIWNOTES', a university student learning platform.
+    Target University Discipline: "{subject_category}"
 
-    Based on these live trends (and current high-demand AI/ML concepts), extract 5 killer educational topics that can be explained as a 5-page handwritten study note series.
-    - Make sure the topics are conceptual and educational (e.g., "How MCP (Model Context Protocol) Works", "Agentic RAG vs Traditional RAG", "LoRA & QLoRA Fine-Tuning Explained", "How Reasoning LLMs Work", etc.) rather than just company gossip.
+    Live Technical Feed Signals:
+    {raw_news}
+
+    Select exactly 5 high-impact, educational concepts in "{subject_category}" that university students
+    can turn into viral 5-page study carousels on LinkedIn and Facebook.
+    Make each topic title crystal clear and focused on teaching a core concept (e.g. "How X Works: Architecture & Use Cases").
     """
 
     for model_name in working_models:
@@ -96,7 +173,7 @@ def discover_viral_topics(working_models: list[str]) -> list[ViralTopic]:
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     response_schema=TrendingTopicsList,
-                    temperature=0.6,
+                    temperature=0.4,
                 ),
             )
             parsed = TrendingTopicsList.model_validate_json(response.text)
@@ -104,26 +181,6 @@ def discover_viral_topics(working_models: list[str]) -> list[ViralTopic]:
         except Exception:
             continue
 
-    # Fallback topics if all servers are busy
-    return [
-        ViralTopic(
-            topic_title="Agentic RAG vs Traditional RAG",
-            why_viral="Everyone is upgrading basic RAG pipelines to autonomous AI agents.",
-        ),
-        ViralTopic(
-            topic_title="How MCP (Model Context Protocol) Works",
-            why_viral="The new standard for connecting AI models to external tools and data.",
-        ),
-        ViralTopic(
-            topic_title="Fine-Tuning LLMs with LoRA & QLoRA",
-            why_viral="Essential technique for training custom AI models on consumer GPUs.",
-        ),
-        ViralTopic(
-            topic_title="Vector Databases & Embeddings Explained",
-            why_viral="The backbone of semantic search and modern AI memory systems.",
-        ),
-        ViralTopic(
-            topic_title="How Reasoning Models (Chain-of-Thought) Work",
-            why_viral="Thinking models are dominating coding and math benchmarks.",
-        ),
-    ]
+    raise RuntimeError(
+        "All Gemini models failed while discovering topics. Please retry."
+    )

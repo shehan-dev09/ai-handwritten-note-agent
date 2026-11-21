@@ -1,91 +1,174 @@
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 import os
-import time
+import re
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from html2image import Html2Image
 from pydantic import BaseModel, Field
 
-# Load environment variables
 load_dotenv()
 
-
-def get_genai_client(api_key: str | None = None) -> genai.Client:
-    """Initializes the GenAI client using provided key, .env, or environment variables."""
-    key = api_key or os.getenv("GEMINI_API_KEY")
-    if not key:
-        raise ValueError(
-            "GEMINI_API_KEY not found. Please set it in .env or Streamlit Secrets."
-        )
-    return genai.Client(api_key=key)
+# =====================================================================
+# 1. VISUAL TEMPLATES REGISTRY (4 DISTINCT STUDENT NOTE STYLES)
+# =====================================================================
+NOTE_TEMPLATES = {
+    "classic_cream": {
+        "name": "Classic Cream Notebook",
+        "badge": "Warm Dot-Grid + Yellow Marker",
+        "paper_bg": "#FAF7F0",
+        "dot_color": "#B8C4CE",
+        "grid_css": "background-image: radial-gradient(#B8C4CE 1.4px, transparent 1.4px); background-size: 26px 26px;",
+        "margin_line": "rgba(217, 48, 37, 0.32)",
+        "ink_main": "#1A2233",
+        "ink_title": "#0F172A",
+        "ink_blue": "#0B57D0",
+        "ink_red": "#D93025",
+        "ink_green": "#137333",
+        "mark_fill": "rgba(255, 226, 70, 0.78)",
+        "box_stroke": "%23D93025",
+        " box_fill": "rgba(217, 48, 37, 0.04)",
+        "underline_stroke": "%230B57D0",
+        "card_bg": "rgba(255, 255, 255, 0.85)",
+        "card_border": "#1E293B",
+        "step_bg": "#FFFDF7",
+        "takeaway_bg": "#FEF9C3",
+        "takeaway_border": "#CA8A04",
+        "badge_bg": "#1E293B",
+        "badge_text": "#FFFFFF",
+    },
+    "dark_neon": {
+        "name": "Obsidian Neon Darkboard",
+        "badge": "iPad Dark Slate + Emerald Glow",
+        "paper_bg": "#0B101B",
+        "dot_color": "#1E293B",
+        "grid_css": "background-image: radial-gradient(#26334D 1.4px, transparent 1.4px); background-size: 26px 26px;",
+        "margin_line": "rgba(0, 255, 136, 0.22)",
+        "ink_main": "#E2E8F0",
+        "ink_title": "#FFFFFF",
+        "ink_blue": "#38BDF8",
+        "ink_red": "#00FF88",
+        "ink_green": "#A3E635",
+        "mark_fill": "rgba(0, 255, 136, 0.25)",
+        "box_stroke": "%2338BDF8",
+        "box_fill": "rgba(56, 189, 248, 0.08)",
+        "underline_stroke": "%2300FF88",
+        "card_bg": "rgba(15, 23, 42, 0.88)",
+        "card_border": "#334155",
+        "step_bg": "#111C2D",
+        "takeaway_bg": "rgba(0, 255, 136, 0.10)",
+        "takeaway_border": "#00FF88",
+        "badge_bg": "#00FF88",
+        "badge_text": "#03120A",
+    },
+    "blueprint_grid": {
+        "name": "Engineering Blueprint Grid",
+        "badge": "Technical Graph + Navy Ink",
+        "paper_bg": "#F0F6FC",
+        "dot_color": "#BFD4EA",
+        "grid_css": (
+            "background-image: linear-gradient(rgba(14, 116, 144, 0.10) 1px, transparent 1px), "
+            "linear-gradient(90deg, rgba(14, 116, 144, 0.10) 1px, transparent 1px); "
+            "background-size: 26px 26px;"
+        ),
+        "margin_line": "rgba(2, 132, 199, 0.30)",
+        "ink_main": "#0F172A",
+        "ink_title": "#0369A1",
+        "ink_blue": "#0284C7",
+        "ink_red": "#EA580C",
+        "ink_green": "#0D9488",
+        "mark_fill": "rgba(125, 211, 252, 0.55)",
+        "box_stroke": "%23EA580C",
+        "box_fill": "rgba(234, 88, 12, 0.05)",
+        "underline_stroke": "%230284C7",
+        "card_bg": "rgba(255, 255, 255, 0.90)",
+        "card_border": "#0369A1",
+        "step_bg": "#FFFFFF",
+        "takeaway_bg": "#E0F2FE",
+        "takeaway_border": "#0284C7",
+        "badge_bg": "#0369A1",
+        "badge_text": "#FFFFFF",
+    },
+    "cornell_academic": {
+        "name": "Cornell Exam Revision Sheet",
+        "badge": "Academic Ivory + Violet Accents",
+        "paper_bg": "#FDFCF7",
+        "dot_color": "#D6D3C9",
+        "grid_css": "background-image: linear-gradient(to bottom, transparent 29px, rgba(148, 163, 184, 0.22) 30px); background-size: 100% 30px;",
+        "margin_line": "rgba(124, 58, 237, 0.30)",
+        "ink_main": "#1E1B4B",
+        "ink_title": "#311042",
+        "ink_blue": "#6D28D9",
+        "ink_red": "#BE123C",
+        "ink_green": "#047857",
+        "mark_fill": "rgba(233, 213, 255, 0.85)",
+        "box_stroke": "%23BE123C",
+        "box_fill": "rgba(190, 18, 60, 0.04)",
+        "underline_stroke": "%236D28D9",
+        "card_bg": "rgba(255, 255, 255, 0.92)",
+        "card_border": "#4C1D95",
+        "step_bg": "#FAF5FF",
+        "takeaway_bg": "#F3E8FF",
+        "takeaway_border": "#7C3AED",
+        "badge_bg": "#4C1D95",
+        "badge_text": "#FFFFFF",
+    },
+}
 
 
 # =====================================================================
-# 1. STRICT PYDANTIC SCHEMAS
+# 2. PYDANTIC SCHEMAS FOR STRICT 5-PAGE STUDY GUIDE
 # =====================================================================
 class DiagramStep(BaseModel):
-    step_num: str = Field(description="Step number like 1, 2, 3, 4")
-    title: str = Field(
-        description="Short English technical term (max 2-3 words)"
-    )
-    detail: str = Field(description="Very short 3-5 word explanation")
+    step_num: str = Field(description="Step number e.g. '01', '02', '03', '04'")
+    title: str = Field(description="Short 2-3 word title in English")
+    detail: str = Field(description="Brief 4-6 word explanation")
 
 
 class NotePage(BaseModel):
     page_number: int = Field(description="Page number from 1 to 5")
-    page_tag: str = Field(
-        description="Short English section tag, e.g., 'Part 1: Fundamentals'"
+    page_title: str = Field(description="Clear English heading for this slide")
+    subtitle_tag: str = Field(
+        description="Short category badge e.g. 'CONCEPT 01 // MENTAL MODEL'"
     )
-    page_title: str = Field(
-        description="Catchy title for this specific page (max 6 words)"
+    intro_definition: str = Field(
+        description="2-3 sentences explaining the core idea clearly. Wrap 1-2 key terms in <mark>...</mark> or <b>...</b>."
     )
-    summary_text: str = Field(
-        description="2-3 clear sentences introducing this page's concept. Wrap 1-2 short key terms (max 2 words each) in <mark> tags and 1 short term in <u> tags."
+    bullet_points: list[str] = Field(
+        description="Exactly 3 detailed, high-value study bullet points. Wrap key phrases in <mark>, <b>, or <u>.",
+        min_length=3,
+        max_length=3,
     )
-    diagram_heading: str = Field(
-        description="Heading for the visual diagram/flowchart on this page"
-    )
+    diagram_title: str = Field(description="Title for the 4-step visual architecture flow")
     diagram_steps: list[DiagramStep] = Field(
-        description="Exactly 4 sequential or related nodes for the visual diagram"
+        description="Exactly 4 sequential steps for the visual flowchart",
+        min_length=4,
+        max_length=4,
     )
-    key_points_heading: str = Field(
-        description="Subheading for the bullet points section"
-    )
-    key_points: list[str] = Field(
-        description="Exactly 4 detailed educational bullet points. Start each with <b>English Term:</b> followed by explanation. Use <mark> or <u> tags only on short 1-2 word keywords."
-    )
-    box_title: str = Field(
-        description="Title for the bottom green box (e.g., Real-World Example, Technical Concept, or Use Case)"
-    )
-    box_content: str = Field(
-        description="2-3 practical sentences explaining the example or technical detail."
-    )
-    sticky_title: str = Field(
-        description="Short title for the yellow sticky note (e.g., 'Pro Tip', 'Architecture Tip', 'Key Takeaway') WITHOUT emojis"
-    )
-    sticky_content: str = Field(
-        description="2 short, high-value sentences for the yellow sticky note in the requested language."
+    key_takeaway: str = Field(
+        description="1 memorable exam/interview takeaway or analogy sentence."
     )
 
 
 class StudyCarouselResponse(BaseModel):
-    topic_name: str
+    topic_name: str = Field(description="Clean English title of the topic")
     pages: list[NotePage] = Field(
-        description="List of exactly 5 comprehensive study note pages"
+        description="Exactly 5 sequential study pages", min_length=5, max_length=5
     )
     social_caption: str = Field(
-        description="Viral Facebook/LinkedIn caption written in a natural human tone with a strong hook, page-by-page breakdown summary, engaging question, and 5 hashtags."
+        description="Engaging human-written social media post caption with hook, summary, and hashtags."
     )
 
 
 # =====================================================================
-# 2. MODEL SELECTION & CONTENT GENERATION
+# 3. CACHED MODEL DISCOVERY (FAST FLASH-LITE PRIORITY)
 # =====================================================================
-def get_working_models(api_key: str | None = None) -> list:
-    """Fetches active 3.x text models and prioritizes standard Flash models."""
-    client = get_genai_client(api_key)
-    excluded_keywords = [
+@lru_cache(maxsize=4)
+def get_working_models(api_key: str) -> list[str]:
+    """Discovers active Gemini 3.x Flash models once and caches the result for instant reuse."""
+    client = genai.Client(api_key=api_key)
+    excluded = (
         "2.5",
         "2.0",
         "1.5",
@@ -98,607 +181,461 @@ def get_working_models(api_key: str | None = None) -> list:
         "aqa",
         "robotics",
         "banana",
-    ]
+    )
+    discovered = []
     try:
-        all_models = []
         for m in client.models.list():
             name = m.name.replace("models/", "")
-            if (
-                "generateContent" in m.supported_actions
-                and "gemini" in name.lower()
-            ):
-                if not any(
-                    bad_word in name.lower() for bad_word in excluded_keywords
-                ):
-                    all_models.append(name)
-
-        all_models.sort(
-            key=lambda x: (
-                0
-                if ("flash" in x and "lite" not in x)
-                else (1 if "lite" in x else 2)
-            )
-        )
-        return all_models if all_models else ["gemini-3.5-flash"]
+            if "gemini" in name.lower() and not any(x in name.lower() for x in excluded):
+                discovered.append(name)
     except Exception:
-        return ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]
+        pass
+
+    # Prioritize fastest low-latency 3.x Flash models first for maximum speed
+    priority_order = [
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
+        "gemini-3.8-flash",
+    ]
+    ordered = [m for m in priority_order if m in discovered]
+    for m in discovered:
+        if m not in ordered:
+            ordered.append(m)
+
+    return ordered if ordered else priority_order[:4]
 
 
+# =====================================================================
+# 4. CURRICULUM & COPY GENERATOR AGENT
+# =====================================================================
 def generate_5_page_study_guide(
-    topic: str, language: str = "Sinhala_Mix", api_key: str | None = None
+    topic: str,
+    language: str = "Sinhala_Mix",
+    api_key: str = None,
+    subject_category: str = "AI & Machine Learning",
 ) -> StudyCarouselResponse:
-    """Generates a complete 5-page study note series."""
-    client = get_genai_client(api_key)
-    lang_instruction = (
-        "Write all explanations (including sticky notes and examples) in simple, natural conversational Sinhala (Unicode script), but KEEP all technical AI/ML terms in English."
-        if language == "Sinhala_Mix"
-        else "Write completely in simple, clear, engaging English."
-    )
+    """Generates a complete 5-page university study carousel + social media caption."""
+    resolved_key = api_key or os.getenv("GEMINI_API_KEY")
+    client = genai.Client(api_key=resolved_key)
+    working_models = get_working_models(resolved_key)
+
+    if language == "Sinhala_Mix":
+        lang_rules = """
+        LANGUAGE MODE: SINHALA + ENGLISH TECHNICAL MIX (University Kuppiya Style).
+        - Write explanations in natural, clear conversational Sinhala Unicode script.
+        - Keep ALL technical terms, acronyms, and engineering names in English script (e.g., Vector Database, API Gateway, TCP/IP, Big-O, Docker).
+        - Write `page_title`, `subtitle_tag`, and `diagram_steps.title` in English.
+        - Write the `social_caption` in natural human-like Sinhala + English mix ("Mn ada igena gaththa...", no robotic AI clichés) with relevant hashtags (#NIWNOTES #UniversityNotes).
+        """
+    else:
+        lang_rules = """
+        LANGUAGE MODE: 100% GLOBAL ENGLISH.
+        - Write all explanations, bullet points, diagrams, and the social caption in crisp, beginner-friendly English.
+        - Write the `social_caption` like a top university student sharing personal study notes on LinkedIn/Facebook with hashtags (#NIWNOTES #TechNotes).
+        """
 
     prompt = f"""
-    You are a top 1% AI/ML Educator and Viral LinkedIn/Facebook Content Creator.
-    Topic: {topic}
-    Language Instruction: {lang_instruction}
+    You are the Lead University Note Creator for 'NIWNOTES'.
+    University Subject Track: "{subject_category}"
+    Target Concept: "{topic}"
 
-    Create a complete, 100% technically accurate **5-Page Handwritten Study Note Series** so a reader can master this topic from scratch:
-    - Page 1: Core Concept, Simple Analogy & What Problem It Solves
-    - Page 2: Step-by-Step Architecture & Internal Workflow
-    - Page 3: Key Technical Components & Deep Dive Mechanics
-    - Page 4: Real-World Industry Use Cases, Tools & Implementation
-    - Page 5: Limitations, Best Practices, Pitfalls & Summary Cheat-Sheet
+    Create a 5-page progressive handwritten study guide so any student or developer scrolling social media can master this topic from scratch:
+    - Page 1: The Hook, Simple Definition & Real-World Mental Model
+    - Page 2: Core Architecture & How It Works Step-by-Step
+    - Page 3: Deep Dive into Key Components & Technical Mechanics
+    - Page 4: Real-World Engineering Use Cases & Implementation Pattern
+    - Page 5: Common Pitfalls, Best Practices & Exam/Interview Cheat Sheet
 
-    STRICT Formatting rules for text fields:
-    - DO NOT use any emojis inside the note pages.
-    - Use <mark>keyword</mark> for yellow highlighter effect (keep inside <mark> to 1 or 2 words MAX).
-    - Use <u>keyword</u> for red-pen underline emphasis (keep inside <u> to 1 or 2 words MAX).
-    - Use <b>Term:</b> to bold important starters in bullet points.
+    {lang_rules}
+
+    INLINE HIGHLIGHT RULES (CRITICAL):
+    Inside `intro_definition` and `bullet_points`, highlight key terms using ONLY these 3 flat tags (NEVER nest tags inside each other):
+    1. <mark>important concept</mark> (for marker highlight)
+    2. <b>key term</b> (for hand-drawn ink box)
+    3. <u>crucial phrase</u> (for pen underline)
+    Keep tagged phrases short (1 to 4 words max).
     """
 
-    models_to_try = get_working_models(api_key)
-    print(f"[INFO] Active Gemini models prioritized: {models_to_try[:5]}")
+    last_err = None
+    for model_name in working_models:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=StudyCarouselResponse,
+                    temperature=0.35,
+                ),
+            )
+            return StudyCarouselResponse.model_validate_json(response.text)
+        except Exception as e:
+            last_err = e
+            continue
 
-    for model_name in models_to_try:
-        for attempt in range(1, 3):
-            try:
-                print(
-                    f"[INFO] Generating 5-Page Study Guide using '{model_name}' (Attempt {attempt}/2)..."
-                )
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=StudyCarouselResponse,
-                        temperature=0.5,
-                    ),
-                )
-                return StudyCarouselResponse.model_validate_json(response.text)
+    raise RuntimeError(f"Failed to generate study guide: {last_err}")
 
-            except Exception as e:
-                err_str = str(e)
-                if "503" in err_str:
-                    print(
-                        f"[WARNING] '{model_name}' server is busy (503). Waiting 3s..."
-                    )
-                    time.sleep(3)
-                else:
-                    print(
-                        f"[WARNING] '{model_name}' failed ({type(e).__name__}). Switching to next model..."
-                    )
-                    break
 
-    raise RuntimeError(
-        "All Gemini models are currently busy. Please try again in a minute."
+# =====================================================================
+# 5. ZERO-DRIFT HTML/SVG SKETCHNOTE BUILDER (MULTI-TEMPLATE)
+# =====================================================================
+def clean_markup(text: str) -> str:
+    """Ensures only clean, non-nested <mark>, <b>, and <u> tags exist."""
+    if not text:
+        return ""
+    # Strip any disallowed HTML tags
+    allowed = re.sub(r"<(?!/?(mark|b|u)\b)[^>]+>", "", text)
+    # Prevent nested tags inside <mark> or <b>
+    allowed = re.sub(
+        r"<mark>(.*?)</mark>",
+        lambda m: "<mark>" + re.sub(r"</?(b|u|mark)>", "", m.group(1)) + "</mark>",
+        allowed,
     )
+    return allowed
 
 
-# =====================================================================
-# 3. ZERO-DRIFT CSS + INLINE SVG SKETCHNOTE ENGINE
-# =====================================================================
-HTML_PAGE_TEMPLATE = """
-<!DOCTYPE html>
+def build_page_html(
+    page: NotePage,
+    topic_name: str,
+    author: str,
+    template_id: str = "classic_cream",
+) -> str:
+    """Compiles a single NotePage into a 1000x1250px HTML/SVG canvas styled with the chosen template."""
+    t = NOTE_TEMPLATES.get(template_id, NOTE_TEMPLATES["classic_cream"])
+
+    intro_html = clean_markup(page.intro_definition)
+    takeaway_html = clean_markup(page.key_takeaway)
+
+    bullets_html = ""
+    for idx, b in enumerate(page.bullet_points, 1):
+        bullets_html += f"""
+        <div class="bullet-row">
+            <div class="bullet-icon">0{idx}</div>
+            <div class="bullet-text">{clean_markup(b)}</div>
+        </div>
+        """
+
+    steps_html = ""
+    for i, step in enumerate(page.diagram_steps):
+        arrow_svg = ""
+        if i < len(page.diagram_steps) - 1:
+            arrow_svg = f"""
+            <div class="step-arrow">
+                <svg width="28" height="24" viewBox="0 0 28 24" fill="none">
+                    <path d="M2 12 C10 10, 18 14, 24 12 M18 6 L25 12 L18 18"
+                          stroke="{t['ink_blue']}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            """
+        steps_html += f"""
+        <div class="step-card">
+            <div class="step-num">{step.step_num}</div>
+            <div class="step-title">{clean_markup(step.title)}</div>
+            <div class="step-detail">{clean_markup(step.detail)}</div>
+        </div>
+        {arrow_svg}
+        """
+
+    return f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Kalam:wght@400;700&family=Noto+Sans+Sinhala:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Kalam:wght@400;700&family=Noto+Sans+Sinhala:wght@500;700&display=swap" rel="stylesheet">
 <style>
-    * { box-sizing: border-box; }
-    body {
-        margin: 0;
-        padding: 0;
-        background-color: #cfc8b8;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 1000px;
-        height: 1250px;
-    }
-    .page {
-        width: 940px;
-        height: 1190px;
-        background-color: #fbf9f2;
-        background-image: radial-gradient(#b8c4ce 1.4px, transparent 1.4px);
-        background-size: 26px 26px;
-        box-shadow: 
-            0 15px 35px rgba(0, 0, 0, 0.22),
-            inset 0 0 70px rgba(215, 200, 170, 0.3);
-        border-radius: 8px;
-        position: relative;
-        padding: 40px 52px 55px 82px;
-        overflow: hidden;
-        font-family: 'Kalam', 'Noto Sans Sinhala', 'Nirmala UI', sans-serif;
-        font-weight: 500;
-        color: #16264c;
-        font-size: 18.5px;
-        line-height: 34px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-    .margin-line {
-        position: absolute;
-        top: 0; bottom: 0; left: 58px;
-        width: 2px;
-        background-color: rgba(225, 100, 100, 0.45);
-        z-index: 1;
-    }
-    .paper-lighting {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: linear-gradient(130deg, rgba(255,255,255,0.25) 0%, rgba(0,0,0,0.01) 55%, rgba(0,0,0,0.07) 100%);
-        pointer-events: none;
-        z-index: 20;
-    }
-    .content-wrapper {
-        position: relative;
-        z-index: 5;
-    }
-    .doodle-icon {
-        width: 22px;
-        height: 22px;
-        vertical-align: middle;
-        margin-right: 7px;
-        flex-shrink: 0;
-    }
-    .top-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        font-family: 'Caveat', cursive;
-        font-size: 24px;
-        color: #475569;
-    }
-    .category-pill {
-        background-color: #ffedd5;
-        border: 2px solid #c2410c;
-        color: #9a3412;
-        padding: 1px 14px;
-        border-radius: 22px 6px 20px 6px / 6px 20px 6px 22px;
-        font-weight: 700;
-    }
-    .page-badge {
-        background-color: #e2e8f0;
-        border: 2px solid #334155;
-        color: #0f172a;
-        padding: 1px 14px;
-        border-radius: 6px 18px 6px 18px / 18px 6px 18px 6px;
-        font-weight: 700;
-    }
-    .title-row {
-        margin-bottom: 18px;
-    }
-    h1 {
-        font-family: 'Kalam', 'Noto Sans Sinhala', 'Nirmala UI', sans-serif;
-        font-weight: 700;
-        font-size: 30px;
-        color: #b91c1c;
-        margin: 0;
-        line-height: 40px;
-        display: inline-block;
-        position: relative;
-        background: linear-gradient(100deg, rgba(254, 240, 138, 0) 1%, rgba(254, 240, 138, 0.85) 4%, rgba(253, 224, 71, 0.75) 95%, rgba(254, 240, 138, 0) 100%);
-        padding: 0 8px 6px 8px;
-    }
-    h1::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: -6px;
-        bottom: -3px;
-        height: 10px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 12' preserveAspectRatio='none'%3E%3Cpath d='M2 4 Q 150 1, 298 5' stroke='%23b91c1c' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3Cpath d='M8 9 Q 150 7, 292 10' stroke='%23b91c1c' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-        background-size: 100% 100%;
-    }
-    .intro-box {
-        margin-bottom: 18px;
-        font-size: 19px;
-        line-height: 35px;
-    }
-    mark {
-        display: inline;
-        background: linear-gradient(104deg, rgba(253, 224, 71, 0) 1%, rgba(253, 224, 71, 0.9) 4%, rgba(250, 204, 21, 0.85) 95%, rgba(253, 224, 71, 0) 100%);
-        padding: 1px 6px;
-        border-radius: 6px 2px 8px 3px;
-        color: #0f172a;
-        font-weight: 600;
-        box-decoration-break: clone;
-        -webkit-box-decoration-break: clone;
-    }
-    u {
-        display: inline;
-        text-decoration: none;
-        color: #b91c1c;
-        font-weight: 700;
-        padding-bottom: 4px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'%3E%3Cpath d='M1 3 Q 60 7, 119 2' stroke='%23b91c1c' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-size: 100% 7px;
-        background-position: 0 100%;
-        box-decoration-break: clone;
-        -webkit-box-decoration-break: clone;
-    }
-    .diagram-container {
-        background-color: rgba(255, 255, 255, 0.82);
-        padding: 16px 18px 20px 18px;
-        margin: 10px 0 20px 0;
-        position: relative;
-        border: 2.4px dashed #0f766e;
-        border-radius: 16px 245px 14px 235px / 235px 14px 245px 16px;
-    }
-    .diagram-header {
-        font-family: 'Kalam', 'Noto Sans Sinhala', 'Nirmala UI', sans-serif;
-        font-size: 19.5px;
-        font-weight: 700;
-        color: #0f766e;
-        margin-bottom: 20px;
-        line-height: 26px;
-        display: flex;
-        align-items: center;
-    }
-    .flowchart {
-        display: flex;
-        align-items: stretch;
-        justify-content: space-between;
-        gap: 2px;
-    }
-    .flow-node {
-        flex: 1;
-        background-color: #ffffff;
-        padding: 18px 8px 12px 8px;
-        text-align: center;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        border: 2.2px solid #1e3a8a;
-        border-radius: 255px 12px 225px 12px / 12px 225px 12px 255px;
-        box-shadow: 2px 3px 0px rgba(30, 58, 138, 0.12);
-    }
-    .flow-node::after {
-        content: "";
-        position: absolute;
-        inset: -2px;
-        border: 1.2px solid rgba(30, 58, 138, 0.65);
-        border-radius: 12px 225px 12px 255px / 255px 12px 225px 12px;
-        transform: rotate(-0.6deg);
-        pointer-events: none;
-    }
-    .step-badge {
-        position: absolute;
-        top: -14px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #fef08a;
-        border: 2px solid #1e3a8a;
-        box-shadow: 0 0 0 3px #ffffff;
-        color: #b91c1c;
-        font-family: 'Caveat', cursive;
-        font-size: 18px;
-        font-weight: 700;
-        line-height: 18px;
-        padding: 2px 10px;
-        border-radius: 14px;
-        z-index: 10;
-    }
-    .node-title {
-        font-family: 'Kalam', sans-serif;
-        font-weight: 700;
-        font-size: 16.5px;
-        line-height: 21px;
-        color: #1e3a8a;
-        margin-bottom: 5px;
-    }
-    .node-desc {
-        font-size: 13.5px;
-        line-height: 18px;
-        color: #334155;
-    }
-    .flow-arrow {
-        width: 30px;
-        min-width: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .arrow-svg {
-        width: 28px;
-        height: 20px;
-    }
-    .section-title-wrap {
-        margin: 4px 0 12px 0;
-    }
-    h3 {
-        font-family: 'Kalam', 'Noto Sans Sinhala', 'Nirmala UI', sans-serif;
-        color: #b91c1c;
-        font-size: 21.5px;
-        font-weight: 700;
-        margin: 0;
-        padding-bottom: 5px;
-        line-height: 32px;
-        display: inline-block;
-        position: relative;
-    }
-    h3::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: -8px;
-        bottom: -2px;
-        height: 8px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 250 10' preserveAspectRatio='none'%3E%3Cpath d='M2 3 Q 125 0, 248 4' stroke='%23b91c1c' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M6 8 Q 125 6, 242 8' stroke='%23b91c1c' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-        background-size: 100% 100%;
-    }
-    ul {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 18px 0;
-    }
-    li {
-        display: flex;
-        align-items: flex-start;
-        margin-bottom: 9px;
-        line-height: 33px;
-        font-size: 18px;
-    }
-    .bullet-svg {
-        width: 20px;
-        min-width: 20px;
-        height: 20px;
-        margin-right: 10px;
-        margin-top: 7px;
-    }
-    li b {
-        color: #0c4a6e;
-        font-weight: 700;
-    }
-    .bottom-grid {
-        display: grid;
-        grid-template-columns: 1.35fr 0.95fr;
-        gap: 24px;
-        align-items: start;
-        margin-top: 6px;
-    }
-    .example-card {
-        background-color: rgba(220, 252, 231, 0.65);
-        padding: 14px 18px;
-        color: #14532d;
-        font-size: 17px;
-        line-height: 29px;
-        position: relative;
-        border: 2.3px solid #15803d;
-        border-radius: 235px 14px 215px 14px / 14px 215px 14px 235px;
-        box-shadow: 2px 4px 10px rgba(21, 128, 61, 0.08);
-    }
-    .example-card::after {
-        content: "";
-        position: absolute;
-        inset: -2px;
-        border: 1.2px solid rgba(21, 128, 61, 0.65);
-        border-radius: 14px 215px 14px 235px / 235px 14px 215px 14px;
-        transform: rotate(0.4deg);
-        pointer-events: none;
-    }
-    .example-title {
-        font-weight: 700;
-        font-size: 18.5px;
-        color: #166534;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-    }
-    .sticky-note {
-        background: linear-gradient(160deg, #fef08a 0%, #fde047 100%);
-        padding: 16px 18px 16px 18px;
-        box-shadow: 3px 6px 14px rgba(0, 0, 0, 0.14);
-        border: 2px solid #ca8a04;
-        transform: rotate(-1.4deg);
-        position: relative;
-        color: #1e293b;
-        font-size: 16.5px;
-        line-height: 27px;
-        border-radius: 6px 220px 28px 6px / 220px 6px 6px 220px;
-    }
-    .tape {
-        position: absolute;
-        top: -11px;
-        left: 50%;
-        transform: translateX(-50%) rotate(1.5deg);
-        width: 95px;
-        height: 22px;
-        background-color: rgba(255, 255, 255, 0.68);
-        border: 1px dashed rgba(160, 160, 160, 0.5);
-    }
-    .sticky-title {
-        font-weight: 700;
-        color: #9a3412;
-        font-size: 18.5px;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-    }
-    .footer {
-        text-align: right;
-        font-family: 'Caveat', cursive;
-        font-size: 24px;
-        color: #475569;
-        margin-top: 8px;
-        z-index: 15;
-    }
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{
+    width: 1000px;
+    height: 1250px;
+    background-color: {t['paper_bg']};
+    {t['grid_css']}
+    font-family: 'Kalam', 'Noto Sans Sinhala', sans-serif;
+    color: {t['ink_main']};
+    position: relative;
+    overflow: hidden;
+    padding: 46px 54px 42px 78px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}}
+.margin-line {{
+    position: absolute;
+    top: 0; bottom: 0; left: 54px;
+    width: 2px;
+    background: {t['margin_line']};
+}}
+.top-bar {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2.5px solid {t['ink_title']};
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+}}
+.brand-pill {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    background: {t['badge_bg']};
+    color: {t['badge_text']};
+    padding: 5px 14px;
+    border-radius: 6px;
+    letter-spacing: 0.08em;
+}}
+.page-counter {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: {t['ink_blue']};
+}}
+.header-block {{ margin-bottom: 16px; }}
+.subtitle-tag {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: {t['ink_red']};
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}}
+.main-title {{
+    font-size: 40px;
+    font-weight: 700;
+    color: {t['ink_title']};
+    line-height: 1.15;
+}}
+.intro-box {{
+    background: {t['card_bg']};
+    border: 2.5px solid {t['card_border']};
+    border-radius: 14px;
+    padding: 18px 22px;
+    font-size: 23px;
+    line-height: 1.52;
+    margin-bottom: 18px;
+    box-shadow: 4px 4px 0px {t['card_border']};
+}}
+.bullets-section {{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 18px;
+}}
+.bullet-row {{
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: {t['card_bg']};
+    border-left: 5px solid {t['ink_blue']};
+    border-radius: 0 12px 12px 0;
+    padding: 13px 18px;
+}}
+.bullet-icon {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    background: {t['ink_blue']};
+    color: #FFFFFF;
+    min-width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+}}
+.bullet-text {{
+    font-size: 22px;
+    line-height: 1.5;
+    flex: 1;
+}}
+/* Zero-Drift Inline Annotations */
+mark {{
+    background: linear-gradient(104deg, transparent 0.9%, {t['mark_fill']} 2.4%, {t['mark_fill']} 96%, transparent 98%);
+    color: inherit;
+    padding: 1px 6px;
+    border-radius: 5px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}}
+b {{
+    font-weight: 700;
+    color: {t['ink_red']};
+    padding: 1px 7px;
+    background-color: {t.get('box_fill', 'transparent')};
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 120 40'><path d='M4 6 Q60 2 116 5 Q118 20 115 35 Q60 38 5 34 Q2 20 4 6 Z' fill='none' stroke='{t['box_stroke']}' stroke-width='2.6'/></svg>");
+    background-size: 100% 100%;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}}
+u {{
+    text-decoration: none;
+    color: {t['ink_blue']};
+    font-weight: 700;
+    padding-bottom: 3px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 100 10'><path d='M2 7 Q50 2 98 6' fill='none' stroke='{t['underline_stroke']}' stroke-width='3' stroke-linecap='round'/></svg>");
+    background-repeat: repeat-x;
+    background-position: 0 100%;
+    background-size: 100% 8px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}}
+/* Flowchart Box */
+.diagram-container {{
+    background: {t['card_bg']};
+    border: 2.5px dashed {t['ink_blue']};
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+}}
+.diagram-header {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: {t['ink_blue']};
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}}
+.steps-row {{
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 6px;
+}}
+.step-card {{
+    flex: 1;
+    background: {t['step_bg']};
+    border: 2px solid {t['card_border']};
+    border-radius: 10px;
+    padding: 10px 10px;
+    text-align: center;
+}}
+.step-num {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: {t['ink_red']};
+    margin-bottom: 3px;
+}}
+.step-title {{
+    font-size: 18px;
+    font-weight: 700;
+    color: {t['ink_title']};
+    line-height: 1.2;
+    margin-bottom: 4px;
+}}
+.step-detail {{
+    font-size: 15px;
+    line-height: 1.3;
+    opacity: 0.9;
+}}
+.step-arrow {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}}
+/* Takeaway Footer */
+.takeaway-box {{
+    background: {t['takeaway_bg']};
+    border: 2.5px solid {t['takeaway_border']};
+    border-radius: 12px;
+    padding: 13px 18px;
+    font-size: 20px;
+    line-height: 1.42;
+    margin-bottom: 12px;
+}}
+.takeaway-label {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: {t['ink_red']};
+    text-transform: uppercase;
+    margin-right: 8px;
+}}
+.footer-bar {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    opacity: 0.75;
+    padding-top: 6px;
+    border-top: 1px solid {t['dot_color']};
+}}
 </style>
 </head>
 <body>
-    <div class="page" id="page">
-        <div class="margin-line"></div>
-        <div class="paper-lighting"></div>
-
-        <div class="content-wrapper">
-            <div class="top-meta">
-                <span class="category-pill"># __PAGE_TAG__</span>
-                <span>Date: __TODAY_DATE__</span>
-                <span class="page-badge">Page 0__PAGE_NUM__ / 05</span>
-            </div>
-
-            <div class="title-row">
-                <h1>__PAGE_TITLE__</h1>
-            </div>
-
-            <div class="intro-box">
-                __SUMMARY_TEXT__
-            </div>
-
-            <div class="diagram-container">
-                <div class="diagram-header">
-                    <svg class="doodle-icon" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>
-                    </svg>
-                    __DIAGRAM_HEADING__
-                </div>
-                <div class="flowchart">
-                    __DIAGRAM_HTML__
-                </div>
-            </div>
-
-            <div class="section-title-wrap">
-                <h3>__KEY_POINTS_HEADING__</h3>
-            </div>
-            <ul>
-                __BULLETS_HTML__
-            </ul>
-
-            <div class="bottom-grid">
-                <div class="example-card">
-                    <span class="example-title">
-                        <svg class="doodle-icon" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                        </svg>
-                        __BOX_TITLE__
-                    </span>
-                    __BOX_CONTENT__
-                </div>
-
-                <div class="sticky-note">
-                    <div class="tape"></div>
-                    <span class="sticky-title">
-                        <svg class="doodle-icon" viewBox="0 0 24 24" fill="none" stroke="#9a3412" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>
-                        </svg>
-                        __STICKY_TITLE__
-                    </span>
-                    __STICKY_CONTENT__
-                </div>
-            </div>
+    <div class="margin-line"></div>
+    <div>
+        <div class="top-bar">
+            <span class="brand-pill">NIWNOTES // {topic_name[:38].upper()}</span>
+            <span class="page-counter">SLIDE 0{page.page_number} / 05</span>
         </div>
-
-        <div class="footer">Notes by __AUTHOR__  |  Swipe ➔ (0__PAGE_NUM__/05)</div>
+        <div class="header-block">
+            <div class="subtitle-tag">{page.subtitle_tag}</div>
+            <div class="main-title">{page.page_title}</div>
+        </div>
+        <div class="intro-box">{intro_html}</div>
+        <div class="bullets-section">{bullets_html}</div>
+    </div>
+    <div>
+        <div class="diagram-container">
+            <div class="diagram-header">&#9654; {page.diagram_title}</div>
+            <div class="steps-row">{steps_html}</div>
+        </div>
+        <div class="takeaway-box">
+            <span class="takeaway-label">[KEY TAKEAWAY]</span> {takeaway_html}
+        </div>
+        <div class="footer-bar">
+            <span>NIWNOTES UNIVERSITY SOCIAL LEARNING</span>
+            <span>CURATED BY {author}</span>
+        </div>
     </div>
 </body>
-</html>
-"""
+</html>"""
 
 
-def render_all_pages(
-    guide: StudyCarouselResponse,
-    author: str = "@YourName",
-    output_dir: str = "output",
-) -> list[str]:
-    """Renders all 5 pages of the study guide into individual high-res PNG files (Windows & Linux Cloud compatible)."""
-    os.makedirs(output_dir, exist_ok=True)
+def _render_single_page(args: tuple) -> str:
+    """Worker function for parallel Chromium rendering."""
+    page, topic_name, author, output_dir, template_id = args
+    html_content = build_page_html(page, topic_name, author, template_id)
+    file_name = f"note_page_{page.page_number}.png"
+
     hti = Html2Image(
         size=(1000, 1250),
         output_path=output_dir,
         custom_flags=[
-            "--virtual-time-budget=3500",
+            "--virtual-time-budget=1000",
             "--no-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
             "--disable-extensions",
+            "--hide-scrollbars",
             "--log-level=3",
         ],
     )
-    today_date = datetime.now().strftime("%b %d, %Y")
+    hti.screenshot(html_str=html_content, save_as=file_name)
+    return os.path.join(output_dir, file_name)
 
-    bullet_svg_icon = """
-    <svg class="bullet-svg" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 12h15M13 6l6 6-6 6"/>
-    </svg>
-    """
 
-    arrow_svg_icon = """
-    <div class="flow-arrow">
-        <svg class="arrow-svg" viewBox="0 0 32 20" fill="none" stroke="#b91c1c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 10 Q 16 6, 29 10"/>
-            <path d="M21 4 L 30 10 L 22 16"/>
-        </svg>
-    </div>
-    """
+def render_all_pages(
+    guide: StudyCarouselResponse,
+    author: str = "@NIWNOTES",
+    output_dir: str = "output",
+    template_id: str = "classic_cream",
+) -> list[str]:
+    """Renders all 5 slides in parallel using ThreadPoolExecutor for 4x faster execution."""
+    os.makedirs(output_dir, exist_ok=True)
+    tasks = [
+        (page, guide.topic_name, author, output_dir, template_id)
+        for page in sorted(guide.pages, key=lambda p: p.page_number)
+    ]
 
-    saved_files = []
-    for page in guide.pages:
-        print(
-            f"[INFO] Rendering Page 0{page.page_number}/05: '{page.page_title}'..."
-        )
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        results = list(executor.map(_render_single_page, tasks))
 
-        diagram_html = ""
-        for i, step in enumerate(page.diagram_steps):
-            diagram_html += f"""
-            <div class="flow-node">
-                <div class="step-badge">#{step.step_num}</div>
-                <div class="node-title">{step.title}</div>
-                <div class="node-desc">{step.detail}</div>
-            </div>
-            """
-            if i < len(page.diagram_steps) - 1:
-                diagram_html += arrow_svg_icon
-
-        bullets_html = "".join(
-            [
-                f"<li>{bullet_svg_icon}<div>{bp}</div></li>"
-                for bp in page.key_points
-            ]
-        )
-
-        page_html = (
-            HTML_PAGE_TEMPLATE.replace("__PAGE_NUM__", str(page.page_number))
-            .replace("__PAGE_TAG__", page.page_tag)
-            .replace("__TODAY_DATE__", today_date)
-            .replace("__PAGE_TITLE__", page.page_title)
-            .replace("__SUMMARY_TEXT__", page.summary_text)
-            .replace("__DIAGRAM_HEADING__", page.diagram_heading)
-            .replace("__DIAGRAM_HTML__", diagram_html)
-            .replace("__KEY_POINTS_HEADING__", page.key_points_heading)
-            .replace("__BULLETS_HTML__", bullets_html)
-            .replace("__BOX_TITLE__", page.box_title)
-            .replace("__BOX_CONTENT__", page.box_content)
-            .replace("__STICKY_TITLE__", page.sticky_title)
-            .replace("__STICKY_CONTENT__", page.sticky_content)
-            .replace("__AUTHOR__", author)
-        )
-
-        filename = f"note_page_{page.page_number}.png"
-        hti.screenshot(html_str=page_html, save_as=filename)
-        full_path = os.path.join(output_dir, filename)
-        saved_files.append(full_path)
-        print(f"[SUCCESS] Saved '{full_path}'")
-
-    return saved_files
+    return results
