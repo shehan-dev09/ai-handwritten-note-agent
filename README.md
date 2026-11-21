@@ -1,6 +1,6 @@
 <div align="center">
 
-# Genesis Note Studio — Autonomous AI/ML Sketchnote & Viral Copy Engine
+#  NIWNote Studio — Autonomous AI/ML Sketchnote & Viral Copy Engine
 
 **An end-to-end Multi-Agent AI system that autonomously discovers trending AI/ML breakthroughs, synthesizes a 5-page curriculum, renders realistic handwritten study carousels, and writes human-like social media launch copy.**
 
@@ -33,7 +33,7 @@ Creating high-retention technical carousels for LinkedIn and Facebook typically 
 
 Every run produces a **5-page progressive learning carousel** (`1000x1250px` per slide) engineered for maximum readability on mobile and desktop feeds:
 
-| Slide 01 — Hook & Mental Model | Slide 02 — Core Architecture & Flowchart |
+| Slide 01 — ENGLISH | Slide 02 — SINHALA MIX |
 | :---: | :---: |
 | ![Sample Note Page 1](assets/note_page_1.png) | ![Sample Note Page 2](assets/note_page_2.png) |
 
