@@ -40,7 +40,7 @@ graph LR
 
 ## 📸 Sample Output
 
-| Page 01: Core Concept & Analogy | Page 02: System Architecture |
+| Page 01: English Only | Page 02: English Sinhala MIX |
 | :---: | :---: |
 | ![Sample Note Page 1](assets/note_page_1.png) | ![Sample Note Page 2](assets/note_page_2.png) |
 
