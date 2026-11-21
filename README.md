@@ -11,7 +11,7 @@
 [![Headless Chromium](https://img.shields.io/badge/Renderer-HTML%2FCSS%2FSVG%20to%20PNG-2DFFA8?style=flat-square&logo=googlechrome&logoColor=white)](https://pypi.org/project/html2image/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-white?style=flat-square)](LICENSE)
 
-[**Launch Live Studio Web App**](https://your-app-name.streamlit.app) • [**Architecture**](#-system-architecture) • [**Sample Output**](#-sample-handwritten-carousel-output) • [**Local Setup**](#-quick-start-local-installation)
+[**Launch Live Studio Web App**]([https://your-app-name.streamlit.app](https://ai-handwritten-note-agent.streamlit.app/)) • [**Architecture**](#-system-architecture) • [**Sample Output**](#-sample-handwritten-carousel-output) • [**Local Setup**](#-quick-start-local-installation)
 
 </div>
 
