@@ -13,354 +13,751 @@ from trend_agent import discover_viral_topics
 load_dotenv()
 
 # =====================================================================
+# AUTO-ENFORCE GREEN THEME IN .streamlit/config.toml
+# =====================================================================
+os.makedirs(".streamlit", exist_ok=True)
+config_path = os.path.join(".streamlit", "config.toml")
+expected_config = (
+    '[theme]\n'
+    'base = "dark"\n'
+    'primaryColor = "#00FF88"\n'
+    'backgroundColor = "#020504"\n'
+    'secondaryBackgroundColor = "#07120D"\n'
+    'textColor = "#ECFFF5"\n'
+    'font = "sans serif"\n\n'
+    '[server]\n'
+    'headless = true\n'
+)
+if not os.path.exists(config_path) or open(config_path, "r", encoding="utf-8").read() != expected_config:
+    with open(config_path, "w", encoding="utf-8") as cf:
+        cf.write(expected_config)
+
+# =====================================================================
 # PAGE CONFIGURATION
 # =====================================================================
 st.set_page_config(
-    page_title="AI/ML Sketchnote Studio | Autonomous Content Engine",
-    page_icon="✨",
+    page_title="Genesis Note Studio",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # =====================================================================
-# REUSABLE VISUAL DESIGN SYSTEM (CSS INJECTION)
+# TYPOGRAPHIC GLASSMORPHISM // GREEN x BLACK (ZERO RED BLEED + MOBILE)
 # =====================================================================
-DESIGN_SYSTEM_CSS = """
+STUDIO_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
 
-:root {
-    --bg-obsidian: #050811;
-    --bg-surface: #0B1120;
-    --bg-glass: rgba(15, 23, 42, 0.62);
-    --bg-glass-hover: rgba(22, 33, 58, 0.78);
-    --accent-cyan: #0EA5E9;
-    --accent-cyan-bright: #00E5FF;
-    --accent-blue: #2563EB;
-    --accent-emerald: #10B981;
-    --text-primary: #F8FAFC;
-    --text-secondary: #94A3B8;
-    --text-muted: #64748B;
-    --border-hairline: rgba(255, 255, 255, 0.08);
-    --border-glow: rgba(14, 165, 233, 0.45);
-    --shadow-card: 0 20px 40px -15px rgba(0, 0, 0, 0.75);
-    --shadow-glow: 0 0 28px -4px rgba(14, 165, 233, 0.45);
-    --radius-lg: 16px;
-    --radius-md: 12px;
-    --radius-pill: 9999px;
+:root,
+html,
+body,
+.stApp,
+[data-testid="stAppViewContainer"] {
+    --bg: #020504;
+    --g: #00FF88;
+    --g-soft: #2DFFA8;
+    --lime: #B6FF3C;
+    --text-hi: #ECFFF5;
+    --text-mid: rgba(214, 255, 232, 0.70);
+    --text-low: rgba(214, 255, 232, 0.42);
+    --edge: rgba(0, 255, 136, 0.26);
+    --glass: linear-gradient(155deg, rgba(10, 26, 18, 0.82) 0%, rgba(3, 9, 6, 0.90) 100%);
+    --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                    0 20px 50px -20px rgba(0, 0, 0, 0.92),
+                    0 0 36px -16px rgba(0, 255, 136, 0.25);
+    --primary-color: #00FF88 !important;
+    accent-color: #00FF88 !important;
 }
 
-/* Global App Background & Architectural Grid */
+/* ---------- Canvas Background & Subtle Grid ---------- */
 .stApp {
-    background-color: var(--bg-obsidian) !important;
-    background-image: 
-        radial-gradient(circle at 50% -10%, rgba(14, 165, 233, 0.18) 0%, rgba(37, 99, 235, 0.06) 35%, transparent 70%),
-        linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px) !important;
-    background-size: 100% 100%, 48px 48px, 48px 48px !important;
+    background:
+        radial-gradient(ellipse 70% 45% at 15% -10%, rgba(0, 255, 136, 0.15), transparent 60%),
+        radial-gradient(ellipse 55% 40% at 95% 20%, rgba(182, 255, 60, 0.07), transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 115%, rgba(0, 255, 136, 0.12), transparent 60%),
+        var(--bg) !important;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    color: var(--text-primary) !important;
+    color: var(--text-hi) !important;
+    overflow-x: hidden !important;
 }
 
-/* Hide default Streamlit chrome clutter */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header[data-testid="stHeader"] {
-    background: rgba(5, 8, 17, 0.75) !important;
-    backdrop-filter: blur(12px) !important;
-    border-bottom: 1px solid var(--border-hairline) !important;
+.stApp::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(0, 255, 136, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 136, 0.04) 1px, transparent 1px);
+    background-size: 52px 52px;
+    -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 25%, #000 20%, transparent 75%);
+            mask-image: radial-gradient(ellipse 85% 70% at 50% 25%, #000 20%, transparent 75%);
+    z-index: 0;
 }
 
-/* Main Container Spacing */
+/* Hide Native Streamlit Chrome */
+#MainMenu,
+footer,
+header[data-testid="stHeader"],
+[data-testid="stSidebar"],
+[data-testid="collapsedControl"],
+[data-testid="stToolbar"] {
+    display: none !important;
+}
+
+/* ---------- Main Container Spacing ---------- */
 .block-container {
-    max-width: 1320px !important;
-    padding-top: 2.5rem !important;
-    padding-bottom: 4rem !important;
+    max-width: 1420px !important;
+    padding: 1.15rem 1.75rem 2.5rem 1.75rem !important;
+    margin: 0 auto !important;
+    position: relative;
+    z-index: 1;
 }
 
-/* Typography Hierarchy */
-h1, h2, h3, .display-title {
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    letter-spacing: -0.03em !important;
-    color: var(--text-primary) !important;
+/* ---------- Glass Studio Cards ---------- */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background: var(--glass) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+            backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--edge) !important;
+    border-radius: 18px !important;
+    padding: 1.35rem 1.4rem !important;
+    box-shadow: var(--glass-shadow) !important;
+    box-sizing: border-box !important;
 }
 
-/* Glassmorphic Sidebar */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, rgba(11, 17, 32, 0.92) 0%, rgba(5, 8, 17, 0.96) 100%) !important;
-    backdrop-filter: blur(20px) !important;
-    border-right: 1px solid var(--border-hairline) !important;
+[data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] {
+    gap: 0.8rem !important;
 }
 
-[data-testid="stSidebar"] .block-container {
-    padding-top: 2rem !important;
+/* Prevent nested containers from stacking borders or padding */
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlockBorderWrapper"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
 }
 
-/* Custom Navigation & Hero Header */
-.nav-pill-bar {
+/* ---------- Top Navbar ---------- */
+.studio-navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 1.25rem;
-    background: rgba(15, 23, 42, 0.55);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--border-hairline);
-    border-radius: var(--radius-pill);
-    margin-bottom: 2.2rem;
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0.75rem 1.15rem;
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+            backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--edge);
+    border-radius: 13px;
+    box-shadow: var(--glass-shadow);
+    margin-bottom: 0.25rem;
 }
 
-.brand-cluster {
+.nav-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.brand-mark {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--g);
+    box-shadow: 0 0 12px var(--g);
+    flex-shrink: 0;
+}
+
+.brand-title {
+    font-family: 'Space Grotesk', sans-serif;
     font-weight: 700;
-    font-size: 1rem;
-    color: var(--text-primary);
-}
-
-.brand-orb {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-cyan-bright), var(--accent-blue));
-    box-shadow: 0 0 12px var(--accent-cyan-bright);
-}
-
-.status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 14px;
-    border-radius: var(--radius-pill);
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #34D399;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.pulse-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background-color: var(--accent-emerald);
-    box-shadow: 0 0 8px var(--accent-emerald);
-}
-
-.hero-card {
-    position: relative;
-    padding: 2.6rem 2.8rem;
-    border-radius: 20px;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(11, 17, 32, 0.45) 100%);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-hairline);
-    box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    margin-bottom: 2rem;
-    overflow: hidden;
-}
-
-.hero-card::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 420px;
-    height: 420px;
-    background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
-    pointer-events: none;
-}
-
-.hero-eyebrow {
-    display: inline-block;
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-transform: uppercase;
+    font-size: 0.84rem;
     letter-spacing: 0.12em;
-    color: var(--accent-cyan-bright);
-    background: rgba(14, 165, 233, 0.1);
-    border: 1px solid rgba(14, 165, 233, 0.25);
-    padding: 4px 12px;
-    border-radius: var(--radius-pill);
-    margin-bottom: 1rem;
+    text-transform: uppercase;
+    color: var(--text-hi);
+}
+
+.brand-divider {
+    color: rgba(255, 255, 255, 0.22);
+}
+
+.brand-sub {
+    font-size: 0.78rem;
+    color: var(--text-mid);
+}
+
+.nav-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    color: var(--text-mid);
+}
+
+.nav-meta .live {
+    color: var(--g);
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    font-weight: 600;
+}
+
+/* ---------- Balanced Typographic Hero ---------- */
+.hero {
+    padding: 1.2rem 0.15rem 1.05rem 0.15rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 .hero-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 2.5rem;
-    font-weight: 800;
-    line-height: 1.15;
-    margin: 0 0 0.75rem 0;
-    background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 65%, #38BDF8 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.hero-subtitle {
-    color: var(--text-secondary);
-    font-size: 1.02rem;
-    line-height: 1.6;
-    max-width: 780px;
-    margin: 0;
-}
-
-/* Glass Surface Cards & Metric Tiles */
-.glass-panel {
-    background: var(--bg-glass);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--border-hairline);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem 1.75rem;
-    box-shadow: var(--shadow-card);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    margin-bottom: 1.25rem;
-}
-
-.glass-panel:hover {
-    border-color: rgba(14, 165, 233, 0.28);
-    background: var(--bg-glass-hover);
-}
-
-.metric-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-top: 1.6rem;
-}
-
-.metric-tile {
-    background: rgba(5, 8, 17, 0.55);
-    border: 1px solid var(--border-hairline);
-    border-radius: var(--radius-md);
-    padding: 0.9rem 1.2rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.metric-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-}
-
-.metric-value {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.15rem;
+    font-family: 'Space Grotesk', sans-serif;
     font-weight: 700;
-    color: var(--text-primary);
+    font-size: clamp(1.95rem, 4vw, 3.25rem);
+    line-height: 0.98;
+    letter-spacing: -0.04em;
+    margin: 0.3rem 0 0 0;
+    background: linear-gradient(180deg, #FFFFFF 15%, #B8FFD9 60%, #00FF88 120%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 22px rgba(0, 255, 136, 0.18));
 }
 
-/* Input Fields & Form Controls */
-.stTextInput > div > div > input {
-    background-color: rgba(11, 17, 32, 0.85) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border-hairline) !important;
-    border-radius: var(--radius-md) !important;
-    padding: 0.75rem 1rem !important;
-    font-size: 0.95rem !important;
-    transition: all 0.2s ease !important;
+.hero-title .outline {
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1.5px var(--g);
+    filter: drop-shadow(0 0 16px rgba(0, 255, 136, 0.55));
 }
 
-.stTextInput > div > div > input:focus {
-    border-color: var(--accent-cyan) !important;
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.18) !important;
-    background-color: rgba(15, 23, 42, 0.95) !important;
+.hero-sub {
+    max-width: 440px;
+    margin: 0;
+    color: var(--text-mid);
+    font-size: 0.86rem;
+    line-height: 1.55;
 }
 
-/* Radio Buttons */
-.stRadio > div {
-    background: rgba(11, 17, 32, 0.65);
-    border: 1px solid var(--border-hairline);
-    border-radius: var(--radius-md);
-    padding: 0.6rem 0.9rem;
+/* ---------- Panel Headers & Section Labels ---------- */
+.panel-header-group {
+    margin-bottom: 0.25rem;
 }
 
-/* Primary & Secondary Buttons */
-.stButton > button, .stDownloadButton > button {
-    border-radius: var(--radius-md) !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    font-weight: 600 !important;
-    font-size: 0.92rem !important;
-    letter-spacing: 0.01em !important;
-    padding: 0.68rem 1.4rem !important;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    border: 1px solid var(--border-hairline) !important;
-    background: rgba(15, 23, 42, 0.85) !important;
-    color: var(--text-primary) !important;
+.section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--g);
+    text-shadow: 0 0 12px rgba(0, 255, 136, 0.45);
+    display: block;
+    margin-bottom: 0.22rem;
 }
 
-.stButton > button:hover, .stDownloadButton > button:hover {
-    border-color: var(--border-glow) !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 20px -6px rgba(14, 165, 233, 0.35) !important;
-    color: #FFFFFF !important;
+.panel-heading {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-hi);
+    margin: 0;
+    line-height: 1.25;
 }
 
-/* Primary Action Button (Glowing Cyan-Blue Gradient) */
-.stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"] {
-    background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 100%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    box-shadow: var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
-    color: #FFFFFF !important;
+.workspace-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(1.2rem, 2.1vw, 1.6rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-hi);
+    margin: 0;
+    line-height: 1.2;
 }
 
-.stButton > button[kind="primary"]:hover, .stDownloadButton > button[kind="primary"]:hover {
-    background: linear-gradient(135deg, var(--accent-cyan-bright) 0%, var(--accent-cyan) 100%) !important;
-    box-shadow: 0 0 35px -2px rgba(0, 229, 255, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
-    transform: translateY(-2px) !important;
+/* ---------- Widget Labels ---------- */
+[data-testid="stWidgetLabel"] p,
+label {
+    color: var(--text-mid) !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
 }
 
-/* Image Cards */
-[data-testid="stImage"] img {
+/* =====================================================================
+   RADIO BUTTONS: 100% DIRECT BASEWEB OVERRIDE (NO .stRadio DEPENDENCY)
+   ===================================================================== */
+[data-testid="stRadio"] div[role="radiogroup"],
+div[role="radiogroup"] {
+    background: rgba(2, 10, 7, 0.65) !important;
+    border: 1px solid rgba(0, 255, 136, 0.18) !important;
     border-radius: 12px !important;
-    border: 1px solid var(--border-hairline) !important;
-    box-shadow: 0 14px 30px -10px rgba(0, 0, 0, 0.7) !important;
-    transition: transform 0.25s ease, border-color 0.25s ease !important;
+    padding: 0.45rem !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.45rem !important;
+}
+
+/* Individual Radio Option Pill */
+label[data-baseweb="radio"] {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(0, 255, 136, 0.12) !important;
+    border-radius: 9px !important;
+    padding: 0.42rem 0.75rem !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    cursor: pointer !important;
+    transition: all 0.18s ease !important;
+    flex: 1 1 auto !important;
+}
+
+label[data-baseweb="radio"]:hover {
+    border-color: rgba(0, 255, 136, 0.4) !important;
+    background: rgba(0, 255, 136, 0.06) !important;
+}
+
+/* Active/Selected Radio Pill */
+label[data-baseweb="radio"]:has(input:checked),
+label[data-baseweb="radio"]:has(input[aria-checked="true"]) {
+    background: rgba(0, 255, 136, 0.12) !important;
+    border-color: #00FF88 !important;
+    box-shadow: 0 0 18px -6px rgba(0, 255, 136, 0.5) !important;
+}
+
+/* Unchecked Radio Circle (Outer) - Override all 4 BaseWeb longhand borders */
+label[data-baseweb="radio"] > div:first-of-type {
+    background-color: #03100A !important;
+    background-image: none !important;
+    border-width: 2px !important;
+    border-style: solid !important;
+    border-color: rgba(0, 255, 136, 0.55) !important;
+    border-top-color: rgba(0, 255, 136, 0.55) !important;
+    border-right-color: rgba(0, 255, 136, 0.55) !important;
+    border-bottom-color: rgba(0, 255, 136, 0.55) !important;
+    border-left-color: rgba(0, 255, 136, 0.55) !important;
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    min-height: 16px !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Unchecked Radio Inner Dot */
+label[data-baseweb="radio"] > div:first-of-type > div {
+    background-color: transparent !important;
+    width: 6px !important;
+    height: 6px !important;
+}
+
+/* Checked Radio Circle (Outer) -> Neon Green #00FF88 */
+label[data-baseweb="radio"]:has(input:checked) > div:first-of-type,
+label[data-baseweb="radio"]:has(input[aria-checked="true"]) > div:first-of-type {
+    background-color: #00FF88 !important;
+    border-color: #00FF88 !important;
+    border-top-color: #00FF88 !important;
+    border-right-color: #00FF88 !important;
+    border-bottom-color: #00FF88 !important;
+    border-left-color: #00FF88 !important;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.8) !important;
+}
+
+/* Checked Radio Inner Dot -> Obsidian #02120A */
+label[data-baseweb="radio"]:has(input:checked) > div:first-of-type > div,
+label[data-baseweb="radio"]:has(input[aria-checked="true"]) > div:first-of-type > div {
+    background-color: #02120A !important;
+    width: 6px !important;
+    height: 6px !important;
+}
+
+/* Radio Option Text */
+label[data-baseweb="radio"] p,
+label[data-baseweb="radio"] span {
+    color: var(--text-hi) !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+}
+
+label[data-baseweb="radio"]:has(input:checked) p,
+label[data-baseweb="radio"]:has(input[aria-checked="true"]) p {
+    color: #00FF88 !important;
+    font-weight: 600 !important;
+}
+
+/* =====================================================================
+   TEXT INPUTS & SELECTBOXES: DIRECT BASEWEB OVERRIDES
+   ===================================================================== */
+[data-testid="stTextInput"] [data-baseweb="input"],
+[data-baseweb="input"] {
+    background-color: rgba(2, 10, 7, 0.78) !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-color: rgba(0, 255, 136, 0.24) !important;
+    border-top-color: rgba(0, 255, 136, 0.24) !important;
+    border-right-color: rgba(0, 255, 136, 0.24) !important;
+    border-bottom-color: rgba(0, 255, 136, 0.24) !important;
+    border-left-color: rgba(0, 255, 136, 0.24) !important;
+    border-radius: 11px !important;
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.6) !important;
+    padding: 0 !important;
+    min-height: 42px !important;
+}
+
+[data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+[data-baseweb="input"]:focus-within {
+    border-color: #00FF88 !important;
+    border-top-color: #00FF88 !important;
+    border-right-color: #00FF88 !important;
+    border-bottom-color: #00FF88 !important;
+    border-left-color: #00FF88 !important;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.18), 0 0 18px -4px rgba(0, 255, 136, 0.5) !important;
+}
+
+[data-baseweb="base-input"] {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+[data-baseweb="input"] input {
+    background-color: transparent !important;
+    border: none !important;
+    color: var(--text-hi) !important;
+    font-size: 0.86rem !important;
+    padding: 0.55rem 0.85rem !important;
+    caret-color: #00FF88 !important;
+    outline: none !important;
+}
+
+[data-testid="stSelectbox"] [data-baseweb="select"] > div,
+[data-baseweb="select"] > div {
+    background-color: rgba(2, 10, 7, 0.78) !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-color: rgba(0, 255, 136, 0.24) !important;
+    border-top-color: rgba(0, 255, 136, 0.24) !important;
+    border-right-color: rgba(0, 255, 136, 0.24) !important;
+    border-bottom-color: rgba(0, 255, 136, 0.24) !important;
+    border-left-color: rgba(0, 255, 136, 0.24) !important;
+    border-radius: 11px !important;
+    color: var(--text-hi) !important;
+    min-height: 42px !important;
+    padding: 0.15rem 0.6rem !important;
+    font-size: 0.86rem !important;
+}
+
+[data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within,
+[data-baseweb="select"] > div:focus-within {
+    border-color: #00FF88 !important;
+    border-top-color: #00FF88 !important;
+    border-right-color: #00FF88 !important;
+    border-bottom-color: #00FF88 !important;
+    border-left-color: #00FF88 !important;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.18) !important;
+}
+
+div[data-baseweb="popover"] ul,
+div[data-baseweb="menu"] {
+    background: #040D09 !important;
+    border: 1px solid rgba(0, 255, 136, 0.3) !important;
+    border-radius: 11px !important;
+}
+
+/* =====================================================================
+   BUTTONS: SECONDARY & PRIMARY
+   ===================================================================== */
+[data-testid="stButton"] > button,
+[data-testid="stDownloadButton"] > button,
+button[data-testid="stBaseButton-secondary"] {
+    background: rgba(0, 255, 136, 0.06) !important;
+    border: 1px solid rgba(0, 255, 136, 0.26) !important;
+    border-radius: 11px !important;
+    color: var(--text-hi) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.81rem !important;
+    min-height: 41px !important;
+    padding: 0.45rem 0.85rem !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+[data-testid="stButton"] > button p,
+[data-testid="stDownloadButton"] > button p {
+    color: var(--text-hi) !important;
+    font-weight: 500 !important;
+    font-size: 0.81rem !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+}
+
+[data-testid="stButton"] > button:hover,
+[data-testid="stButton"] > button:focus,
+[data-testid="stButton"] > button:focus-visible,
+[data-testid="stButton"] > button:active,
+[data-testid="stDownloadButton"] > button:hover,
+[data-testid="stDownloadButton"] > button:focus,
+[data-testid="stDownloadButton"] > button:focus-visible,
+[data-testid="stDownloadButton"] > button:active {
+    border-color: #00FF88 !important;
+    background: rgba(0, 255, 136, 0.14) !important;
+    color: var(--text-hi) !important;
+    box-shadow: 0 0 22px -6px rgba(0, 255, 136, 0.65) !important;
+    outline: none !important;
+}
+
+/* Primary Buttons */
+[data-testid="stButton"] > button[kind="primary"],
+[data-testid="stDownloadButton"] > button[kind="primary"],
+button[data-testid="stBaseButton-primary"] {
+    background: linear-gradient(135deg, #00FF88 0%, #B6FF3C 130%) !important;
+    color: #02120A !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    min-height: 44px !important;
+    box-shadow: 0 0 28px -5px rgba(0, 255, 136, 0.65),
+                inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
+[data-testid="stButton"] > button[kind="primary"] p,
+[data-testid="stButton"] > button[kind="primary"] span,
+[data-testid="stDownloadButton"] > button[kind="primary"] p,
+[data-testid="stDownloadButton"] > button[kind="primary"] span,
+button[data-testid="stBaseButton-primary"] p,
+button[data-testid="stBaseButton-primary"] span {
+    color: #02120A !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+}
+
+[data-testid="stButton"] > button[kind="primary"]:hover,
+[data-testid="stButton"] > button[kind="primary"]:focus,
+[data-testid="stButton"] > button[kind="primary"]:active,
+[data-testid="stDownloadButton"] > button[kind="primary"]:hover,
+[data-testid="stDownloadButton"] > button[kind="primary"]:focus,
+[data-testid="stDownloadButton"] > button[kind="primary"]:active {
+    background: linear-gradient(135deg, #4AFFA8 0%, #C5FF5E 130%) !important;
+    color: #02120A !important;
+    border-color: #FFFFFF !important;
+    box-shadow: 0 0 40px -3px rgba(0, 255, 136, 0.9) !important;
+    outline: none !important;
+}
+
+/* =====================================================================
+   TABS: DIRECT BASEWEB OVERRIDES (ZERO RED HIGHLIGHT BAR)
+   ===================================================================== */
+[data-baseweb="tab-list"] {
+    gap: 6px !important;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.16) !important;
+    padding-bottom: 8px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none !important;
+}
+
+[data-baseweb="tab-list"]::-webkit-scrollbar {
+    display: none !important;
+}
+
+button[data-baseweb="tab"] {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.79rem !important;
+    font-weight: 500 !important;
+    color: var(--text-mid) !important;
+    padding: 0.45rem 0.9rem !important;
+    border-radius: 9px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    height: auto !important;
+    white-space: nowrap !important;
+    margin: 0 !important;
+}
+
+button[data-baseweb="tab"]:hover,
+button[data-baseweb="tab"]:focus {
+    color: var(--text-hi) !important;
+    background: rgba(0, 255, 136, 0.06) !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #00FF88 !important;
+    background: rgba(0, 255, 136, 0.12) !important;
+    border: 1px solid rgba(0, 255, 136, 0.38) !important;
+    box-shadow: 0 0 18px -6px rgba(0, 255, 136, 0.5) !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] p {
+    color: #00FF88 !important;
+    font-weight: 600 !important;
+}
+
+[data-baseweb="tab-highlight"],
+[data-baseweb="tab-border"] {
+    display: none !important;
+    background-color: transparent !important;
+}
+
+[data-baseweb="tab-panel"] {
+    padding-top: 0.85rem !important;
+}
+
+/* ---------- Carousel Slide Previews & Code Block ---------- */
+[data-testid="stImage"] img {
+    border-radius: 10px !important;
+    border: 1px solid rgba(0, 255, 136, 0.25) !important;
+    box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.8), 0 0 22px -10px rgba(0, 255, 136, 0.45);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 [data-testid="stImage"] img:hover {
-    transform: translateY(-4px) scale(1.01) !important;
-    border-color: var(--border-glow) !important;
+    border-color: #00FF88 !important;
+    box-shadow: 0 14px 32px -8px rgba(0, 0, 0, 0.9), 0 0 32px -6px rgba(0, 255, 136, 0.75);
+    transform: translateY(-2px);
 }
 
-/* Code Block (Caption Box) */
-.stCodeBlock, pre {
-    background: rgba(11, 17, 32, 0.9) !important;
-    border: 1px solid var(--border-hairline) !important;
-    border-radius: var(--radius-md) !important;
+[data-testid="stCode"],
+[data-testid="stCodeBlock"],
+pre {
+    background: rgba(2, 10, 7, 0.78) !important;
+    border: 1px solid rgba(0, 255, 136, 0.22) !important;
+    border-radius: 12px !important;
     font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.82rem !important;
 }
 
-/* Section Dividers */
 hr {
-    border-color: var(--border-hairline) !important;
-    margin: 2rem 0 !important;
+    border-color: rgba(0, 255, 136, 0.14) !important;
+    margin: 0.6rem 0 !important;
+}
+
+[data-testid="stAlert"] {
+    background: rgba(2, 14, 9, 0.82) !important;
+    border: 1px solid rgba(0, 255, 136, 0.28) !important;
+    border-radius: 11px !important;
+    color: var(--text-hi) !important;
+}
+
+/* ---------- Mobile & Tablet Responsive Breakpoints ---------- */
+@media (max-width: 1024px) {
+    .block-container {
+        padding: 0.9rem 1.1rem 2rem 1.1rem !important;
+    }
+    .hero {
+        padding: 1rem 0.1rem 0.85rem 0.1rem;
+    }
+    .hero-title {
+        font-size: clamp(1.85rem, 5vw, 2.6rem);
+    }
 }
 
 @media (max-width: 768px) {
-    .hero-title { font-size: 1.85rem; }
-    .metric-grid { grid-template-columns: 1fr; }
-    .hero-card { padding: 1.75rem; }
+    .block-container {
+        padding: 0.65rem 0.75rem 1.75rem 0.75rem !important;
+    }
+    .studio-navbar {
+        padding: 0.65rem 0.85rem;
+        border-radius: 11px;
+    }
+    .brand-divider,
+    .brand-sub {
+        display: none !important;
+    }
+    .nav-meta {
+        font-size: 0.62rem;
+        gap: 10px;
+    }
+    .hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.55rem;
+        padding: 0.85rem 0.05rem 0.75rem 0.05rem;
+    }
+    .hero-title {
+        font-size: 1.85rem;
+        line-height: 1.02;
+    }
+    .hero-sub {
+        font-size: 0.82rem;
+        max-width: 100%;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        padding: 1.05rem 1rem !important;
+        border-radius: 14px !important;
+    }
+    .panel-heading {
+        font-size: 1.15rem;
+    }
+    .workspace-title {
+        font-size: 1.2rem;
+        margin-bottom: 0.35rem;
+    }
+    div[role="radiogroup"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    label[data-baseweb="radio"] {
+        width: 100% !important;
+    }
 }
 </style>
 """
 
-st.markdown(DESIGN_SYSTEM_CSS, unsafe_allow_html=True)
+st.markdown(STUDIO_CSS, unsafe_allow_html=True)
+
 
 # =====================================================================
-# SESSION STATE INITIALIZATION
+# HELPER: AUTO-LOAD EXISTING OUTPUT ON STARTUP SO CANVAS IS NEVER EMPTY
 # =====================================================================
+def load_existing_output():
+    """Finds the most recent generated 5-page note set in output/ to populate the workspace immediately."""
+    if not os.path.exists("output"):
+        return None, [], ""
+
+    subfolders = [
+        os.path.join("output", d)
+        for d in os.listdir("output")
+        if os.path.isdir(os.path.join("output", d))
+    ]
+    candidates = sorted(subfolders, key=os.path.getmtime, reverse=True) + ["output"]
+
+    for folder in candidates:
+        pages = [os.path.join(folder, f"note_page_{i}.png") for i in range(1, 6)]
+        if all(os.path.exists(p) for p in pages):
+            caption_path = os.path.join(folder, "caption.txt")
+            caption_text = ""
+            if os.path.exists(caption_path):
+                with open(caption_path, "r", encoding="utf-8") as f:
+                    caption_text = f.read()
+            topic_label = (
+                os.path.basename(folder).replace("_", " ")
+                if folder != "output"
+                else "Retrieval-Augmented Generation (RAG)"
+            )
+            return topic_label, pages, caption_text
+
+    return None, [], ""
+
+
 if "viral_topics" not in st.session_state:
     st.session_state.viral_topics = []
-if "generated_guide" not in st.session_state:
-    st.session_state.generated_guide = None
-if "image_paths" not in st.session_state:
-    st.session_state.image_paths = []
+
+if "active_topic" not in st.session_state:
+    loaded_topic, loaded_imgs, loaded_cap = load_existing_output()
+    st.session_state.active_topic = loaded_topic
+    st.session_state.image_paths = loaded_imgs
+    st.session_state.social_caption = loaded_cap
 
 # Resolve API Key
 default_api_key = os.getenv("GEMINI_API_KEY", "")
@@ -370,272 +767,240 @@ if not default_api_key:
     except Exception:
         default_api_key = ""
 
-# =====================================================================
-# SIDEBAR CONTROL PANEL
-# =====================================================================
-with st.sidebar:
-    st.markdown(
-        """
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:0.5rem;">
-            <div class="brand-orb"></div>
-            <span style="font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:1.15rem; letter-spacing:-0.02em;">
-                SKETCHNOTE AI
-            </span>
-        </div>
-        <p style="color:#94A3B8; font-size:0.84rem; margin-bottom:1.5rem;">
-            Autonomous Multi-Agent Content Studio
-        </p>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    author_handle = st.text_input(
-        "✍️ Creator Handle / Signature",
-        value="@YourName",
-        help="Rendered on the bottom footer of every handwritten note page.",
-    )
-
-    lang_label = st.radio(
-        "🌐 Output Language Mode",
-        options=[
-            "Sinhala + English Tech Terms",
-            "100% English (Global)",
-        ],
-        index=0,
-    )
-    selected_language = (
-        "Sinhala_Mix" if "Sinhala" in lang_label else "English"
-    )
-
-    if not default_api_key:
-        api_key_input = st.text_input(
-            "🔑 Gemini API Key",
-            type="password",
-            help="Enter your Google AI Studio API Key",
-        )
-    else:
-        api_key_input = default_api_key
-        st.markdown(
-            """
-            <div style="padding:10px 14px; border-radius:10px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); color:#34D399; font-size:0.82rem; margin-top:8px;">
-                🔒 <b>Gemini API Connected</b> · Encrypted Session
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("<hr/>", unsafe_allow_html=True)
-    st.markdown(
-        "<p style='font-size:0.8rem; text-transform:uppercase; letter-spacing:0.08em; color:#64748B; font-weight:600;'>Live Intelligence Feed</p>",
-        unsafe_allow_html=True,
-    )
-
-    if st.button(
-        "⚡ Scan Live Viral AI Topics", use_container_width=True
-    ):
-        if not api_key_input:
-            st.error("Please provide a Gemini API Key first.")
-        else:
-            os.environ["GEMINI_API_KEY"] = api_key_input
-            with st.spinner(
-                "Scanning HuggingFace Daily Papers & HackerNews..."
-            ):
-                models = get_working_models(api_key_input)
-                st.session_state.viral_topics = discover_viral_topics(models)
 
 # =====================================================================
-# TOP BAR & HERO SECTION
+# TOP GLASS NAVBAR + RESPONSIVE TYPOGRAPHIC HERO
 # =====================================================================
 st.markdown(
     """
-    <div class="nav-pill-bar">
-        <div class="brand-cluster">
-            <div class="brand-orb"></div>
-            <span>AI/ML HANDWRITTEN NOTE ENGINE</span>
+    <div class="studio-navbar">
+        <div class="nav-brand">
+            <div class="brand-mark"></div>
+            <span class="brand-title">Genesis Note Studio</span>
+            <span class="brand-divider">/</span>
+            <span class="brand-sub">Autonomous AI/ML Sketchnote &amp; Copy Engine</span>
         </div>
-        <div class="status-pill">
-            <span class="pulse-dot"></span>
-            <span>MULTI-AGENT SYSTEM ONLINE</span>
+        <div class="nav-meta">
+            <span class="live">&#9679; GEMINI 3.x PIPELINE READY</span>
+            <span>1000x1250PX CAROUSEL</span>
         </div>
     </div>
-
-    <div class="hero-card">
-        <div class="hero-eyebrow">AUTONOMOUS EDUCATIONAL PIPELINE</div>
-        <h1 class="hero-title">Transform Complex AI/ML Concepts Into Viral Handwritten Carousels.</h1>
-        <p class="hero-subtitle">
-            Powered by real-time trend discovery, strict Pydantic schema validation, and a zero-drift SVG sketchnote rendering engine designed for high-engagement LinkedIn & Facebook carousels.
-        </p>
-        <div class="metric-grid">
-            <div class="metric-tile">
-                <span class="metric-label">Trend Sources</span>
-                <span class="metric-value">HuggingFace & HackerNews</span>
-            </div>
-            <div class="metric-tile">
-                <span class="metric-label">Output Format</span>
-                <span class="metric-value">5-Page 1000×1250px PNG</span>
-            </div>
-            <div class="metric-tile">
-                <span class="metric-label">Language Engine</span>
-                <span class="metric-value">Sinhala Mix & English</span>
-            </div>
+    <div class="hero">
+        <div>
+            <span class="section-label">Typographic Glass // Green x Black Edition</span>
+            <div class="hero-title">Turn any concept into a <span class="outline">carousel.</span></div>
         </div>
+        <p class="hero-sub">Pick an AI/ML topic, select your language mode, and synthesize five export-ready handwritten study slides with social copy.</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 # =====================================================================
-# TOPIC SELECTION & EXECUTION PANEL
+# 2-PANE STUDIO WORKSPACE LAYOUT (LEFT: CONTROLS | RIGHT: CANVAS)
 # =====================================================================
-st.markdown('<div class="glass-panel">', unsafe_allow_html=True)
-st.markdown(
-    "<h3 style='margin-top:0; font-size:1.25rem;'>🎯 Configure Study Carousel Topic</h3>",
-    unsafe_allow_html=True,
-)
+left_pane, right_pane = st.columns([1.05, 2.25], gap="medium")
 
-if st.session_state.viral_topics:
-    topic_options = [
-        f"{t.topic_title} — ({t.why_viral})"
-        for t in st.session_state.viral_topics
-    ] + ["✍️ Custom Topic (Enter manually below)"]
-    chosen_option = st.radio(
-        "🔥 Select a Live Trending Topic:", topic_options
-    )
-
-    if chosen_option == "✍️ Custom Topic (Enter manually below)":
-        final_topic = st.text_input(
-            "💡 Enter Custom AI/ML Topic",
-            value="What is RAG (Retrieval-Augmented Generation) in AI?",
-        )
-    else:
-        final_topic = chosen_option.split(" — (")[0]
-else:
-    final_topic = st.text_input(
-        "💡 Enter Target AI/ML Topic (or click 'Scan Live Viral AI Topics' in the sidebar)",
-        value="What is RAG (Retrieval-Augmented Generation) in AI?",
-    )
-
-st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-
-generate_btn = st.button(
-    "🚀 Generate 5-Page Handwritten Carousel & Viral Copy",
-    type="primary",
-    use_container_width=True,
-)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# =====================================================================
-# PIPELINE EXECUTION
-# =====================================================================
-if generate_btn:
-    if not api_key_input:
-        st.error(
-            "❌ Gemini API Key not found. Please add it to your `.env` file or sidebar."
-        )
-    elif not final_topic.strip():
-        st.warning("⚠️ Please enter a valid AI/ML topic.")
-    else:
-        os.environ["GEMINI_API_KEY"] = api_key_input
-        safe_folder = "".join(
-            c if c.isalnum() else "_" for c in final_topic
-        )[:35].strip("_")
-        out_dir = os.path.join("output", safe_folder)
-
-        with st.status(
-            f"⚡ Executing Multi-Agent Workflow for: '{final_topic}'...",
-            expanded=True,
-        ) as status:
-            st.write(
-                "🧠 **Professor Agent:** Synthesizing 5-page curriculum, visual flowcharts & viral hook..."
-            )
-            guide = generate_5_page_study_guide(
-                topic=final_topic,
-                language=selected_language,
-                api_key=api_key_input,
-            )
-
-            st.write(
-                "🎨 **Sketchnote Renderer:** Drawing 5 high-resolution GoodNotes pages via headless Chromium..."
-            )
-            img_paths = render_all_pages(
-                guide=guide, author=author_handle, output_dir=out_dir
-            )
-
-            caption_file = os.path.join(out_dir, "caption.txt")
-            with open(caption_file, "w", encoding="utf-8") as f:
-                f.write(guide.social_caption)
-
-            st.session_state.generated_guide = guide
-            st.session_state.image_paths = img_paths
-            status.update(
-                label="✅ 5-Page Handwritten Carousel & Caption Generated Successfully!",
-                state="complete",
-                expanded=False,
-            )
-
-# =====================================================================
-# OUTPUT GALLERY & BUNDLE DOWNLOAD
-# =====================================================================
-if st.session_state.generated_guide and st.session_state.image_paths:
-    guide = st.session_state.generated_guide
-    img_paths = st.session_state.image_paths
-
-    # Build ZIP Archive in memory
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        for p in img_paths:
-            if os.path.exists(p):
-                zf.write(p, arcname=os.path.basename(p))
-        zf.writestr("caption.txt", guide.social_caption)
-    zip_buffer.seek(0)
-
-    st.markdown("<hr/>", unsafe_allow_html=True)
-
-    header_left, header_right = st.columns([2.6, 1.4])
-    with header_left:
+with left_pane:
+    with st.container(border=True):
         st.markdown(
-            f"<h2 style='margin:0; font-size:1.6rem;'>📚 Generated Carousel: {guide.topic_name}</h2>",
+            """
+            <div class="panel-header-group">
+                <span class="section-label">01 // TOPIC DISCOVERY</span>
+                <div class="panel-heading">Content Configuration</div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
+
+        source_mode = st.radio(
+            "Topic Input Method",
+            options=["Manual Topic Entry", "Live Trend Scanner (HF / HN)"],
+            horizontal=True,
+        )
+
+        if source_mode == "Live Trend Scanner (HF / HN)":
+            if st.button("Scan Live AI/ML Trends", use_container_width=True):
+                if not default_api_key:
+                    st.error("API Key required.")
+                else:
+                    with st.spinner("Querying HuggingFace & HackerNews..."):
+                        models = get_working_models(default_api_key)
+                        st.session_state.viral_topics = discover_viral_topics(models)
+
+            if st.session_state.viral_topics:
+                topic_list = [t.topic_title for t in st.session_state.viral_topics]
+                final_topic = st.selectbox(
+                    "Select Discovered Viral Topic", options=topic_list
+                )
+            else:
+                final_topic = st.text_input(
+                    "Target Topic (Click Scan above to populate list)",
+                    value="What is RAG (Retrieval-Augmented Generation) in AI?",
+                )
+        else:
+            final_topic = st.text_input(
+                "Target AI/ML Concept",
+                value="What is RAG (Retrieval-Augmented Generation) in AI?",
+            )
+
+        st.markdown("<hr/>", unsafe_allow_html=True)
+
         st.markdown(
-            "<p style='color:#94A3B8; font-size:0.9rem; margin-top:4px;'>High-resolution 1000×1250px handwritten note series ready for LinkedIn & Facebook.</p>",
+            """
+            <div class="panel-header-group">
+                <span class="section-label">02 // RENDERING PARAMETERS</span>
+                <div class="panel-heading">Output &amp; Language</div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
-    with header_right:
-        st.download_button(
-            label="📦 Download Complete 5-Page Bundle (.ZIP)",
-            data=zip_buffer,
-            file_name="ai_sketchnote_carousel.zip",
-            mime="application/zip",
-            use_container_width=True,
+
+        lang_choice = st.radio(
+            "Language Mode",
+            options=["Sinhala + English Technical Terms", "English Only (Global)"],
+            index=0,
+        )
+        selected_language = "Sinhala_Mix" if "Sinhala" in lang_choice else "English"
+
+        author_handle = st.text_input("Author Signature Handle", value="@YourName")
+
+        if not default_api_key:
+            api_key_input = st.text_input("Gemini API Key", type="password")
+        else:
+            api_key_input = default_api_key
+
+        generate_btn = st.button(
+            "Generate 5-Page Study Carousel",
             type="primary",
+            use_container_width=True,
         )
 
-    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+        if generate_btn:
+            if not api_key_input:
+                st.error("Missing GEMINI_API_KEY.")
+            elif not final_topic.strip():
+                st.warning("Please specify a topic.")
+            else:
+                os.environ["GEMINI_API_KEY"] = api_key_input
+                safe_folder = "".join(
+                    c if c.isalnum() else "_" for c in final_topic
+                )[:35].strip("_")
+                out_dir = os.path.join("output", safe_folder)
 
-    cols = st.columns(5)
-    for idx, img_path in enumerate(img_paths):
-        with cols[idx]:
-            if os.path.exists(img_path):
-                st.image(
-                    img_path,
-                    caption=f"Slide 0{idx+1} / 05",
+                with st.spinner(
+                    "Synthesizing 5-page curriculum & rendering SVG sketchnotes..."
+                ):
+                    guide = generate_5_page_study_guide(
+                        topic=final_topic,
+                        language=selected_language,
+                        api_key=api_key_input,
+                    )
+                    img_paths = render_all_pages(
+                        guide=guide, author=author_handle, output_dir=out_dir
+                    )
+                    caption_file = os.path.join(out_dir, "caption.txt")
+                    with open(caption_file, "w", encoding="utf-8") as f:
+                        f.write(guide.social_caption)
+
+                    st.session_state.active_topic = guide.topic_name
+                    st.session_state.image_paths = img_paths
+                    st.session_state.social_caption = guide.social_caption
+                    st.rerun()
+
+# =====================================================================
+# RIGHT PANE: LIVE CANVAS & EXPORT WORKSPACE
+# =====================================================================
+with right_pane:
+    with st.container(border=True):
+        if st.session_state.image_paths:
+            img_paths = st.session_state.image_paths
+            caption_text = st.session_state.social_caption
+            topic_title = st.session_state.active_topic
+
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                for p in img_paths:
+                    if os.path.exists(p):
+                        zf.write(p, arcname=os.path.basename(p))
+                if caption_text:
+                    zf.writestr("caption.txt", caption_text)
+            zip_buffer.seek(0)
+
+            top_l, top_r = st.columns([2.1, 1.0], vertical_alignment="center")
+            with top_l:
+                st.markdown(
+                    f"""
+                    <div class="panel-header-group" style="margin-bottom:0;">
+                        <span class="section-label">WORKSPACE OUTPUT // 5-SLIDE CAROUSEL</span>
+                        <div class="workspace-title">{topic_title}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with top_r:
+                st.download_button(
+                    label="Download Bundle (.ZIP)",
+                    data=zip_buffer,
+                    file_name="handwritten_carousel_bundle.zip",
+                    mime="application/zip",
+                    type="primary",
                     use_container_width=True,
                 )
-                with open(img_path, "rb") as img_file:
-                    st.download_button(
-                        label=f"⬇️ Save Page 0{idx+1}",
-                        data=img_file,
-                        file_name=f"note_page_{idx+1}.png",
-                        mime="image/png",
-                        key=f"dl_page_{idx+1}",
-                        use_container_width=True,
-                    )
 
-    st.markdown("<hr/>", unsafe_allow_html=True)
-    st.markdown(
-        "<h3 style='margin-bottom:0.4rem; font-size:1.3rem;'>📝 Viral Social Media Copy (LinkedIn / Facebook)</h3>"
-        "<p style='color:#94A3B8; font-size:0.88rem; margin-bottom:0.8rem;'>Click the copy icon in the top-right corner of the box below:</p>",
-        unsafe_allow_html=True,
-    )
-    st.code(guide.social_caption, language="markdown")
+            tab_grid, tab_inspect, tab_copy = st.tabs(
+                ["5-Slide Carousel Grid", "High-Res Slide Inspector", "Social Post Copy"]
+            )
+
+            with tab_grid:
+                cols = st.columns(5, gap="small")
+                for idx, img_path in enumerate(img_paths):
+                    with cols[idx]:
+                        if os.path.exists(img_path):
+                            st.image(img_path, use_container_width=True)
+                            with open(img_path, "rb") as img_file:
+                                st.download_button(
+                                    label=f"Slide 0{idx+1}",
+                                    data=img_file,
+                                    file_name=f"note_page_{idx+1}.png",
+                                    mime="image/png",
+                                    key=f"dl_slide_{idx+1}",
+                                    use_container_width=True,
+                                )
+
+            with tab_inspect:
+                slide_num = st.radio(
+                    "Select Slide to Inspect",
+                    options=[1, 2, 3, 4, 5],
+                    format_func=lambda x: f"Page 0{x}",
+                    horizontal=True,
+                )
+                selected_img = img_paths[slide_num - 1]
+                if os.path.exists(selected_img):
+                    _, center_col, _ = st.columns([0.35, 2.3, 0.35])
+                    with center_col:
+                        st.image(selected_img, use_container_width=True)
+
+            with tab_copy:
+                st.markdown(
+                    '<span class="section-label">LINKEDIN &amp; FACEBOOK CAPTION (CLICK TOP-RIGHT ICON TO COPY)</span>',
+                    unsafe_allow_html=True,
+                )
+                st.code(caption_text, language="markdown")
+
+        else:
+            st.markdown(
+                """
+                <div style="padding: 4.5rem 1.5rem; text-align: center;">
+                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:3.2rem;letter-spacing:-0.04em;line-height:1;
+                                color:transparent;-webkit-text-stroke:1.5px rgba(0,255,136,0.55);filter:drop-shadow(0 0 18px rgba(0,255,136,.35));margin-bottom:1rem;">
+                        00 / 05
+                    </div>
+                    <div class="section-label" style="margin-bottom:0.5rem;">NO ACTIVE CAROUSEL IN WORKSPACE</div>
+                    <div style="font-size: 0.9rem; color: rgba(214,255,232,0.65); max-width: 420px; margin: 0 auto;">
+                        Configure a topic on the left panel and click <b style="color:#00FF88;">Generate 5-Page Study Carousel</b> to render slides.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
