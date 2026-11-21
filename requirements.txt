@@ -1,5 +1,6 @@
 google-genai
 html2image
 python-dotenv
-requests
 pydantic
+requests
+streamlit

@@ -10,11 +10,15 @@ from pydantic import BaseModel, Field
 # Load environment variables
 load_dotenv()
 
-API_KEY = os.getenv("GEMINI_API_KEY")
-if not API_KEY:
-    raise ValueError("GEMINI_API_KEY not found. Please check your .env file.")
 
-client = genai.Client(api_key=API_KEY)
+def get_genai_client(api_key: str | None = None) -> genai.Client:
+    """Initializes the GenAI client using provided key, .env, or environment variables."""
+    key = api_key or os.getenv("GEMINI_API_KEY")
+    if not key:
+        raise ValueError(
+            "GEMINI_API_KEY not found. Please set it in .env or Streamlit Secrets."
+        )
+    return genai.Client(api_key=key)
 
 
 # =====================================================================
@@ -78,8 +82,9 @@ class StudyCarouselResponse(BaseModel):
 # =====================================================================
 # 2. MODEL SELECTION & CONTENT GENERATION
 # =====================================================================
-def get_working_models() -> list:
+def get_working_models(api_key: str | None = None) -> list:
     """Fetches active 3.x text models and prioritizes standard Flash models."""
+    client = get_genai_client(api_key)
     excluded_keywords = [
         "2.5",
         "2.0",
@@ -120,9 +125,10 @@ def get_working_models() -> list:
 
 
 def generate_5_page_study_guide(
-    topic: str, language: str = "Sinhala_Mix"
+    topic: str, language: str = "Sinhala_Mix", api_key: str | None = None
 ) -> StudyCarouselResponse:
     """Generates a complete 5-page study note series."""
+    client = get_genai_client(api_key)
     lang_instruction = (
         "Write all explanations (including sticky notes and examples) in simple, natural conversational Sinhala (Unicode script), but KEEP all technical AI/ML terms in English."
         if language == "Sinhala_Mix"
@@ -148,7 +154,7 @@ def generate_5_page_study_guide(
     - Use <b>Term:</b> to bold important starters in bullet points.
     """
 
-    models_to_try = get_working_models()
+    models_to_try = get_working_models(api_key)
     print(f"[INFO] Active Gemini models prioritized: {models_to_try[:5]}")
 
     for model_name in models_to_try:
@@ -187,7 +193,7 @@ def generate_5_page_study_guide(
 
 
 # =====================================================================
-# 3. ZERO-DRIFT CSS + INLINE SVG SKETCHNOTE ENGINE (100% ALIGNMENT LOCKED)
+# 3. ZERO-DRIFT CSS + INLINE SVG SKETCHNOTE ENGINE
 # =====================================================================
 HTML_PAGE_TEMPLATE = """
 <!DOCTYPE html>
@@ -282,7 +288,6 @@ HTML_PAGE_TEMPLATE = """
     .title-row {
         margin-bottom: 18px;
     }
-    /* Main Heading with Locked Hand-Drawn Double Red Underline */
     h1 {
         font-family: 'Kalam', 'Noto Sans Sinhala', 'Nirmala UI', sans-serif;
         font-weight: 700;
@@ -310,7 +315,6 @@ HTML_PAGE_TEMPLATE = """
         font-size: 19px;
         line-height: 35px;
     }
-    /* Yellow Highlighter */
     mark {
         display: inline;
         background: linear-gradient(104deg, rgba(253, 224, 71, 0) 1%, rgba(253, 224, 71, 0.9) 4%, rgba(250, 204, 21, 0.85) 95%, rgba(253, 224, 71, 0) 100%);
@@ -321,7 +325,6 @@ HTML_PAGE_TEMPLATE = """
         box-decoration-break: clone;
         -webkit-box-decoration-break: clone;
     }
-    /* Red Pen Underline Locked Directly to the Word (Can NEVER drift!) */
     u {
         display: inline;
         text-decoration: none;
@@ -335,7 +338,6 @@ HTML_PAGE_TEMPLATE = """
         box-decoration-break: clone;
         -webkit-box-decoration-break: clone;
     }
-    /* Diagram Container with Locked Dashed Hand-Drawn Border */
     .diagram-container {
         background-color: rgba(255, 255, 255, 0.82);
         padding: 16px 18px 20px 18px;
@@ -360,7 +362,6 @@ HTML_PAGE_TEMPLATE = """
         justify-content: space-between;
         gap: 2px;
     }
-    /* Flowchart Node with Locked Double-Stroke Sketchy Border */
     .flow-node {
         flex: 1;
         background-color: #ffffff;
@@ -383,7 +384,6 @@ HTML_PAGE_TEMPLATE = """
         transform: rotate(-0.6deg);
         pointer-events: none;
     }
-    /* Step Badge sits cleanly ON TOP of the border with a solid mask */
     .step-badge {
         position: absolute;
         top: -14px;
@@ -425,7 +425,6 @@ HTML_PAGE_TEMPLATE = """
         width: 28px;
         height: 20px;
     }
-    /* Subheading with Locked Hand-Drawn Double Red Underline */
     .section-title-wrap {
         margin: 4px 0 12px 0;
     }
@@ -473,7 +472,6 @@ HTML_PAGE_TEMPLATE = """
         color: #0c4a6e;
         font-weight: 700;
     }
-    /* Bottom 2-Column Section */
     .bottom-grid {
         display: grid;
         grid-template-columns: 1.35fr 0.95fr;
@@ -481,7 +479,6 @@ HTML_PAGE_TEMPLATE = """
         align-items: start;
         margin-top: 6px;
     }
-    /* Green Box with Locked Sketchy Double-Border (Can NEVER separate from background!) */
     .example-card {
         background-color: rgba(220, 252, 231, 0.65);
         padding: 14px 18px;
@@ -510,7 +507,6 @@ HTML_PAGE_TEMPLATE = """
         display: flex;
         align-items: center;
     }
-    /* Yellow Sticky Note */
     .sticky-note {
         background: linear-gradient(160deg, #fef08a 0%, #fde047 100%);
         padding: 16px 18px 16px 18px;
@@ -625,15 +621,17 @@ def render_all_pages(
     guide: StudyCarouselResponse,
     author: str = "@YourName",
     output_dir: str = "output",
-):
-    """Renders all 5 pages of the study guide into individual high-res PNG files with font-wait flags."""
+) -> list[str]:
+    """Renders all 5 pages of the study guide into individual high-res PNG files (Windows & Linux Cloud compatible)."""
     os.makedirs(output_dir, exist_ok=True)
-    # Wait 3.5 seconds for Google Web Fonts to fully settle and silence Chrome extension warnings
     hti = Html2Image(
         size=(1000, 1250),
         output_path=output_dir,
         custom_flags=[
             "--virtual-time-budget=3500",
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
             "--disable-extensions",
             "--log-level=3",
         ],
@@ -655,12 +653,12 @@ def render_all_pages(
     </div>
     """
 
+    saved_files = []
     for page in guide.pages:
         print(
             f"[INFO] Rendering Page 0{page.page_number}/05: '{page.page_title}'..."
         )
 
-        # Build Diagram HTML
         diagram_html = ""
         for i, step in enumerate(page.diagram_steps):
             diagram_html += f"""
@@ -673,7 +671,6 @@ def render_all_pages(
             if i < len(page.diagram_steps) - 1:
                 diagram_html += arrow_svg_icon
 
-        # Build Bullets HTML
         bullets_html = "".join(
             [
                 f"<li>{bullet_svg_icon}<div>{bp}</div></li>"
@@ -681,7 +678,6 @@ def render_all_pages(
             ]
         )
 
-        # Populate HTML Template
         page_html = (
             HTML_PAGE_TEMPLATE.replace("__PAGE_NUM__", str(page.page_number))
             .replace("__PAGE_TAG__", page.page_tag)
@@ -701,31 +697,8 @@ def render_all_pages(
 
         filename = f"note_page_{page.page_number}.png"
         hti.screenshot(html_str=page_html, save_as=filename)
-        print(f"[SUCCESS] Saved '{output_dir}/{filename}'")
+        full_path = os.path.join(output_dir, filename)
+        saved_files.append(full_path)
+        print(f"[SUCCESS] Saved '{full_path}'")
 
-
-def main():
-    TOPIC = "What is RAG (Retrieval-Augmented Generation) in AI?"
-    LANGUAGE = "Sinhala_Mix"  # Options: "Sinhala_Mix" or "English"
-    AUTHOR_NAME = "Shehan Nadeesha"
-    OUTPUT_DIR = "output"
-
-    try:
-        study_guide = generate_5_page_study_guide(
-            topic=TOPIC, language=LANGUAGE
-        )
-        render_all_pages(
-            guide=study_guide, author=AUTHOR_NAME, output_dir=OUTPUT_DIR
-        )
-
-        caption_path = os.path.join(OUTPUT_DIR, "caption.txt")
-        with open(caption_path, "w", encoding="utf-8") as f:
-            f.write(study_guide.social_caption)
-        print(f"\n[SUCCESS] Social media caption saved to '{caption_path}'")
-
-    except Exception as e:
-        print(f"[ERROR] An error occurred: {e}")
-
-
-if __name__ == "__main__":
-    main()
+    return saved_files
