@@ -21,7 +21,7 @@
 
 Creating high-retention technical carousels for LinkedIn and Facebook typically requires hours of reading research papers, structuring a beginner-friendly curriculum, illustrating diagrams by hand, and crafting engaging copy.
 
-**Genesis Note Studio** automates this entire workflow at **$0 cost** using a multi-agent pipeline:
+**NIWNote Studio** automates this entire workflow at **$0 cost** using a multi-agent pipeline:
 1. **Live Trend Discovery Agent (`trend_agent.py`):** Queries **HuggingFace Daily Papers** and **HackerNews Algolia APIs** in real time to identify high-velocity AI/ML topics.
 2. **Curriculum & Copywriter Agent (`note_generator.py`):** Uses **Google Gemini 3.x Flash** models with strict **Pydantic v2** schema validation to transform complex concepts into a cohesive **5-page progressive study guide** plus an authentic, human-toned social media caption.
 3. **Zero-Drift Handwritten Sketchnote Renderer (`note_generator.py`):** Compiles structured JSON into a custom **Dot-Grid Notebook Canvas** with inline SVG hand-drawn markers, red ink box callouts, and flowcharts, rendered at `1000x1250px` (4:5 portrait aspect ratio) via Headless Chromium.
@@ -61,7 +61,7 @@ flowchart LR
     end
 
     subgraph Studio["4. Delivery Interfaces"]
-        WEB["Genesis Note Studio Web UI<br/>(Streamlit Cloud + ZIP Export)"]
+        WEB["NIWNote Studio Web UI<br/>(Streamlit Cloud + ZIP Export)"]
         CLI["Interactive CLI Pipeline<br/>(main.py)"]
     end
 
@@ -142,7 +142,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 ```bash
 streamlit run app.py
 ```
-Open `http://localhost:8501` in your browser to access the **Genesis Note Studio** workspace.
+Open `http://localhost:8501` in your browser to access the **NIWNote Studio** workspace.
 
 ### 5. Or Run the Interactive CLI
 ```bash
