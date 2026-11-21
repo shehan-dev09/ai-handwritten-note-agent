@@ -15,13 +15,12 @@ load_dotenv()
 
 
 # =====================================================================
-# 1. EMBEDDED AUTHENTIC HANDWRITING FONT (SINHALA + ENGLISH)
+# 1. EMBEDDED ASSETS (AUTHENTIC FONTS & REAL PAPER TEXTURES)
 # =====================================================================
-FONT_FILE_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "assets",
-    "FontoshanHandwrite-Regular.ttf",
-)
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+
+# 1.1 Authentic Sinhala + English Handwriting Font
+FONT_FILE_PATH = os.path.join(ASSETS_DIR, "FontoshanHandwrite-Regular.ttf")
 _FONT_B64 = ""
 if os.path.exists(FONT_FILE_PATH):
     try:
@@ -30,9 +29,44 @@ if os.path.exists(FONT_FILE_PATH):
     except Exception as _err:
         print(f"Warning: Could not load Fontoshan font file: {_err}")
 
+# 1.2 Real Ruled Notebook Paper Texture (Base64)
+RULED_PAPER_PATH = os.path.join(ASSETS_DIR, "real_ruled_paper.jpg")
+_RULED_PAPER_B64 = ""
+if os.path.exists(RULED_PAPER_PATH):
+    try:
+        with open(RULED_PAPER_PATH, "rb") as _f:
+            _RULED_PAPER_B64 = base64.b64encode(_f.read()).decode("ascii")
+    except Exception as _err:
+        print(f"Warning: Could not load ruled paper texture: {_err}")
+
+# 1.3 Real Kraft / Quad Grid Paper Texture (Base64)
+KRAFT_PAPER_PATH = os.path.join(ASSETS_DIR, "real_kraft_paper.jpg")
+_KRAFT_PAPER_B64 = ""
+if os.path.exists(KRAFT_PAPER_PATH):
+    try:
+        with open(KRAFT_PAPER_PATH, "rb") as _f:
+            _KRAFT_PAPER_B64 = base64.b64encode(_f.read()).decode("ascii")
+    except Exception as _err:
+        print(f"Warning: Could not load kraft paper texture: {_err}")
+
 
 # =====================================================================
-# 2. STRUCTURED PYDANTIC SCHEMAS FOR GEMINI
+# 2. EMOJI STRIPPER UTILITY (ENSURES PURE HANDWRITING)
+# =====================================================================
+def strip_emojis(text: str) -> str:
+    """Removes any unicode emojis, pictographs, or dingbats from text."""
+    if not text:
+        return ""
+    emoji_pattern = re.compile(
+        r"[\U00010000-\U0010ffff\u2600-\u26ff\u2700-\u27bf\uFE00-\uFE0F]",
+        flags=re.UNICODE,
+    )
+    cleaned = emoji_pattern.sub("", str(text))
+    return re.sub(r" {2,}", " ", cleaned).strip()
+
+
+# =====================================================================
+# 3. STRUCTURED PYDANTIC SCHEMAS FOR GEMINI
 # =====================================================================
 class DiagramStep(BaseModel):
     step_label: str = Field(
@@ -85,7 +119,7 @@ class StudyCarouselResponse(BaseModel):
 
 
 # =====================================================================
-# 3. HANDWRITTEN NOTEBOOK TEMPLATES (2 REALISTIC + 2 DIGITAL)
+# 4. HANDWRITTEN NOTEBOOK TEMPLATES (2 REALISTIC + 2 DIGITAL)
 # =====================================================================
 NOTE_TEMPLATES: Dict[str, Dict] = {
     "classic_ruled": {
@@ -93,14 +127,14 @@ NOTE_TEMPLATES: Dict[str, Dict] = {
         "short_name": "Ruled Notebook",
         "category": "Realistic",
         "badge": "Physical Paper",
-        "desc": "Authentic physical ruled paper: blue ruling lines, red margin, ballpoint pen ink, Post-It sticky note, zero digital UI boxes.",
+        "desc": "Real photographic college-ruled paper with blue ruling, red margin, 3 binder punch holes, and ballpoint ink.",
     },
     "vintage_kraft": {
         "name": "Engineering Quad Grid",
         "short_name": "Quad Grid Pad",
         "category": "Realistic",
         "badge": "Physical Paper",
-        "desc": "Real engineering 5mm quad grid lecture pad with sepia ink, scotch-taped notes, and hand-drawn technical sketches.",
+        "desc": "Real photographic 5mm quad grid kraft pad with sepia ink, scotch tape note, and hand-sketched diagrams.",
     },
     "digital_ipad": {
         "name": "iPad GoodNotes Stylus",
@@ -178,30 +212,44 @@ MODULE_OUTLINES = [
 
 
 # =====================================================================
-# 4. LANGUAGE INSTRUCTIONS & PARALLEL AI GENERATION
+# 5. LANGUAGE INSTRUCTIONS & PARALLEL AI GENERATION
 # =====================================================================
 def _build_language_instructions(language: str, include_caption: bool) -> str:
     if language == "Sinhala_Mix":
         caption_rule = (
             """
-        SOCIAL MEDIA CAPTION RULES (MUST BE IN SINHALA + ENGLISH KUPPI MIX):
-        - Write the LinkedIn/Facebook `social_caption` in natural Sri Lankan University Sinhala + English mix.
+        SOCIAL MEDIA CAPTION RULES (MUST BE IN PROPER SINHALA SCRIPT + ENGLISH TECHNICAL WORDS):
+        - Write the LinkedIn/Facebook `social_caption` in natural Sri Lankan University Sinhala script (සිංහල අක්ෂර) with English technical terms.
         - Structure:
-          1. Strong Sinhala hook line about why this topic matters for IT/Engineering students.
-          2. 3-4 short bullet points summarizing what is inside this note deck.
-          3. Friendly Call-To-Action asking fellow students to Save/Share and comment their thoughts.
+          1. Strong Sinhala hook line about why this topic matters for IT/Engineering students (in Sinhala script).
+          2. 3-4 short bullet points summarizing what is inside this note deck (in Sinhala script).
+          3. Friendly Call-To-Action asking fellow students to Save/Share and comment their thoughts (in Sinhala script).
           4. 5 relevant hashtags (#NIWNOTES #Kuppiya #SriLankaTech #UniversityLife #TechNotes).
-        - Do NOT use any emojis anywhere in the caption.
+        - Do NOT use Singlish. Do NOT use emojis anywhere in the caption.
             """
             if include_caption
             else ""
         )
         return f"""
-        LANGUAGE MODE: NATURAL SRI LANKAN UNIVERSITY "KUPPIYA" SINHALA + ENGLISH MIX (Sinhala_Mix).
-        - Write `summary_banner`, `bullet_points`, `diagram_steps.step_detail`, and `pro_tip` in authentic, conversational Sri Lankan university Sinhala Unicode mixed naturally with English technical terms.
-        - NEVER translate standard English technical terms into awkward dictionary Sinhala. Keep words like `Architecture`, `Latency`, `Cache`, `Thread`, `Database`, `API`, `Model`, `Token`, `Vector`, `Packet`, `Cluster`, `Container`, `Pipeline`, `Gradient` in English script.
+        LANGUAGE MODE: REAL SINHALA SCRIPT WITH ENGLISH TECHNICAL WORDS (Sinhala_Mix).
+        
+        CRITICAL SCRIPT REQUIREMENT (STRICTLY ENFORCED):
+        - You MUST write all Sinhala explanations in REAL SINHALA UNICODE SCRIPT (සිංහල අකුරු - e.g., "සරලවම කිව්වොත් මේකෙන් කරන්නේ...", "විභාග ප්‍රශ්න වලට නිතරම අහන...").
+        - ABSOLUTELY NEVER WRITE IN SINGLISH (Latin / English letters for Sinhala words like "Agentic AI kiyanne LLM ekak thawa agent kenek wage task ekak karana eka"). SINGLISH IS STRICTLY FORBIDDEN!
         - Keep `title`, `diagram_title`, and `diagram_steps.step_label` in crisp English.
-        - GOOD SINHALA MIX EXAMPLE: "සරලවම කිව්වොත් **RAG Architecture** එකෙන් කරන්නේ LLM එකට උත්තරයක් හදන්න කලින් අපේ **Vector Database** එකෙන් හරියටම ගැලපෙන **Context** එක අරන් දෙන එකයි. මේකෙන් **Hallucinations** සෑහෙන්න අඩු කරගන්න පුළුවන්."
+        - In `summary_banner`, `bullet_points`, `diagram_steps.step_detail`, and `pro_tip`:
+          Write full conversational sentences in PROPER SINHALA SCRIPT (සිංහල අකුරු), while retaining core technical terminology in English letters (e.g. `LLM`, `Agentic AI`, `Autonomous Agents`, `Multi-Agent Orchestration`, `Vector Database`, `Context`, `Pipeline`, `Latency`, `Cache`).
+
+        CORRECT EXAMPLES (FOLLOW THIS EXACT STYLE):
+        - Bullet 1: "**Autonomous Agents** කියන්නේ සාමාන්‍ය Chatbot එකක් නෙමෙයි, දීපු Goal එකකට අනුව තනිවම තීරණ අරගෙන complex tasks automate කරන systems වලටයි."
+        - Bullet 2: "**Multi-Agent Orchestration** මගින් විශේෂිත task එකකට වෙන වෙනම agents ලා set එකක් සම්බන්ධ කරලා සම්පූර්ණ workflow එකම run කරන්න පුළුවන්."
+        - Summary Banner: "Agentic AI කියන්නේ **LLM Core** එකක් dynamic tools සහ autonomous reasoning loops සමග ක්‍රියාත්මක වන ආකාරයයි."
+        - Pro Tip: "විභාගයේදී **Agent Execution Loop** එක විස්තර කරන විට Plan, Act, සහ Feedback stages පැහැදිලිව සඳහන් කරන්න."
+
+        FORBIDDEN SINGLISH EXAMPLES (NEVER GENERATE THIS):
+        - "Meka simple chat ekak nemei, Autonomous Agents use karala complex task automate karanna puluwan system ekak." (REJECTED!)
+        - "Agentic AI kiyanne LLM ekak thawa agent kenek wage task ekak karana eka." (REJECTED!)
+
         - Wrap 1-2 key technical terms in each bullet in **double asterisks** for realistic marker highlighting.
         - Do NOT use any emojis anywhere in the output.
         {caption_rule}
@@ -293,7 +341,18 @@ def _generate_single_batch(
                     slides = parsed.slides[:5]
                     for idx, s in enumerate(slides):
                         s.page_number = start_page + idx
+                        # Clean any stray emojis
+                        s.title = strip_emojis(s.title)
+                        s.summary_banner = strip_emojis(s.summary_banner)
+                        s.bullet_points = [strip_emojis(b) for b in s.bullet_points]
+                        s.diagram_title = strip_emojis(s.diagram_title)
+                        for stp in s.diagram_steps:
+                            stp.step_label = strip_emojis(stp.step_label)
+                            stp.step_detail = strip_emojis(stp.step_detail)
+                        s.pro_tip = strip_emojis(s.pro_tip)
+
                     caption = getattr(parsed, "social_caption", "") if include_caption else ""
+                    caption = strip_emojis(caption)
                     return slides, caption
             except Exception as err:
                 last_error = err
@@ -305,6 +364,78 @@ def _generate_single_batch(
     raise RuntimeError(f"Failed to synthesize batch {batch_index + 1}. Last error: {last_error}")
 
 
+# =====================================================================
+# 6. EXTRA PAGE: HIGH-YIELD KEYWORD EXPLANATION & EXAM CHEAT-SHEET
+# =====================================================================
+def _synthesize_terminology_deep_dive_slide(
+    all_slides: List[NotePage],
+    topic: str,
+    language: str,
+    subject_category: str,
+    page_num: int,
+) -> NotePage:
+    """
+    Extracts all highlighted keywords across the generated study deck and synthesizes
+    an extra high-yield technical glossary slide for student revision.
+    """
+    # Extract unique highlighted terms in order
+    terms: List[str] = []
+    for s in all_slides:
+        for b in s.bullet_points:
+            found = re.findall(r"\*\*(.+?)\*\*", b)
+            for item in found:
+                t_clean = strip_emojis(item).strip()
+                if t_clean and t_clean not in terms:
+                    terms.append(t_clean)
+
+    # Pick distinct terms (preserving any extracted terms, and supplementing if needed)
+    fallback_pool = [topic, "Architecture", "System Workflow", "Optimization"]
+    combined_terms = [t for t in terms if t]
+    for fb in fallback_pool:
+        if fb not in combined_terms:
+            combined_terms.append(fb)
+    top_terms = combined_terms[:6]
+
+    if language == "Sinhala_Mix":
+        b1_term = top_terms[0] if len(top_terms) > 0 else "Core Concept"
+        b2_term = top_terms[1] if len(top_terms) > 1 else "Mechanism"
+        b3_term = top_terms[2] if len(top_terms) > 2 else "Optimization"
+
+        bullets = [
+            f"**{b1_term}**: මූලික න්‍යායික සංකල්පය වන අතර, පද්ධතියේ ප්‍රධාන කාර්යභාරය සහ දත්ත ගලායාම තීරණය කරයි.",
+            f"**{b2_term}**: ප්‍රායෝගිකව ක්‍රියාත්මක වන ප්‍රධාන මෙහෙයුම් යාන්ත්‍රණය වන අතර, දෝෂ අවම කිරීමට අත්‍යවශ්‍ය වේ.",
+            f"**{b3_term}**: විභාග ප්‍රශ්න වලට නිතර අසන ප්‍රධාන මාතෘකාවක් වන අතර, පද්ධතියේ කාර්යක්ෂමතාව සහ Latency පාලනය කරයි.",
+        ]
+        pro_tip = "විභාගයේදී මෙම Keywords නිවැරදිව සඳහන් කර System Trade-offs පැහැදිලි කිරීමෙන් උපරිම ලකුණු ලබාගත හැක."
+        summary = "මෙම පාඩම් මාලාවේ Highlight කර ඇති ප්‍රධාන තාක්ෂණික වචන සහ විභාග සංකල්ප සාරාංශය."
+    else:
+        b1_term = top_terms[0] if len(top_terms) > 0 else "Core Concept"
+        b2_term = top_terms[1] if len(top_terms) > 1 else "Mechanism"
+        b3_term = top_terms[2] if len(top_terms) > 2 else "Optimization"
+
+        bullets = [
+            f"**{b1_term}**: Foundational theoretical concept defining the primary data contracts and operational boundaries.",
+            f"**{b2_term}**: Core architectural execution mechanism responsible for deterministic reliability and scale.",
+            f"**{b3_term}**: Frequently tested exam topic focused on system trade-offs, bottleneck mitigation, and latency limits.",
+        ]
+        pro_tip = "Exam Revision Rule: Always anchor your answers to core keywords and explicitly cite their system trade-offs."
+        summary = "Comprehensive technical glossary and high-yield concept breakdown for exam & interview revision."
+
+    return NotePage(
+        page_number=page_num,
+        title="Key Terminology Deep Dive",
+        summary_banner=summary,
+        bullet_points=bullets,
+        diagram_title="Exam Recall & Concept Mental Model",
+        diagram_steps=[
+            DiagramStep(step_label="01 Concept", step_detail="Theoretical foundation & boundary"),
+            DiagramStep(step_label="02 Mechanism", step_detail="Production execution flow"),
+            DiagramStep(step_label="03 Tradeoffs", step_detail="Latency vs accuracy limits"),
+        ],
+        pro_tip=pro_tip,
+    )
+
+
 def generate_5_page_study_guide(
     topic: str,
     language: str = "Sinhala_Mix",
@@ -313,8 +444,8 @@ def generate_5_page_study_guide(
     num_pages: int = 5,
 ) -> StudyCarouselResponse:
     """
-    Generates 5, 10, or 30 handwritten slides in parallel using multi-threaded batching
-    and zero thinking-token overhead for rapid synthesis.
+    Generates 5, 10, or 30 handwritten slides in parallel plus 1 extra high-yield
+    terminology deep-dive revision page (e.g., 5+1=6 pages, 10+1=11 pages, 30+1=31 pages).
     """
     active_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
     if not active_key:
@@ -329,6 +460,15 @@ def generate_5_page_study_guide(
         slides, caption = _generate_single_batch(
             active_key, topic, language, subject_category, 0, 1
         )
+        # Synthesize extra terminology deep-dive page
+        glossary_slide = _synthesize_terminology_deep_dive_slide(
+            all_slides=slides,
+            topic=topic,
+            language=language,
+            subject_category=subject_category,
+            page_num=len(slides) + 1,
+        )
+        slides.append(glossary_slide)
         return StudyCarouselResponse(slides=slides, social_caption=caption)
 
     max_workers = min(total_batches, 6)
@@ -359,6 +499,16 @@ def generate_5_page_study_guide(
             master_caption = b_caption
         all_slides.extend(b_slides)
 
+    # Synthesize extra terminology deep-dive page
+    glossary_slide = _synthesize_terminology_deep_dive_slide(
+        all_slides=all_slides,
+        topic=topic,
+        language=language,
+        subject_category=subject_category,
+        page_num=len(all_slides) + 1,
+    )
+    all_slides.append(glossary_slide)
+
     for idx, slide in enumerate(all_slides, start=1):
         slide.page_number = idx
 
@@ -366,10 +516,236 @@ def generate_5_page_study_guide(
 
 
 # =====================================================================
-# 5. INSTANT BROWSER-NATIVE SKETCHNOTE STUDIO & CLIENT-SIDE GPU EXPORT
+# 7. AUTHENTIC HAND-DRAWN TECHNICAL SKETCHES & DIAGRAMS (VARIED PER SLIDE)
+# =====================================================================
+def _render_authentic_handwritten_diagram(
+    fields: dict,
+    page_num: int,
+    total_pages: int,
+    norm_key: str,
+) -> str:
+    """
+    Renders an organic, varied hand-sketched technical diagram tailored to the slide's
+    actual step content. Eliminates repetitive generic graphs and makes every page
+    look like an authentic student or engineering lecture note.
+    """
+    raw_title = fields.get("diagram_title", "Technical Architecture Flow")
+    diag_title = html.escape(str(raw_title))
+    steps = fields.get("diagram_steps", [])
+    if not steps:
+        return ""
+
+    lbl1, dtl1 = steps[0] if len(steps) > 0 else ("Input", "Initial state & parameters")
+    lbl2, dtl2 = steps[1] if len(steps) > 1 else ("Process", "Execution logic & transformation")
+    lbl3, dtl3 = steps[2] if len(steps) > 2 else ("Output", "Deterministic verified result")
+
+    lbl1_h, dtl1_h = html.escape(str(lbl1)), _format_inline_highlights(dtl1)
+    lbl2_h, dtl2_h = html.escape(str(lbl2)), _format_inline_highlights(dtl2)
+    lbl3_h, dtl3_h = html.escape(str(lbl3)), _format_inline_highlights(dtl3)
+
+    is_glossary = "deep dive" in str(fields.get("title", "")).lower() or page_num == total_pages
+    archetype_id = 6 if is_glossary else (((page_num - 1) % 5) + 1)
+
+    # Archetype 1: Horizontal Pipeline Flow (Step 1 ──► Step 2 ──► Step 3)
+    if archetype_id == 1:
+        return f"""
+        <div class="nc-paper-diagram-box">
+            <div class="nc-pdiag-title">&#x2500;&#x2500; Fig 01: {diag_title} &#x2500;&#x2500;</div>
+            <div class="nc-pdiag-flow-horizontal">
+                <div class="nc-sketch-node">
+                    <span class="nc-snode-num">&#9312; Step 1</span>
+                    <div class="nc-snode-title">{lbl1_h}</div>
+                    <div class="nc-snode-body">{dtl1_h}</div>
+                </div>
+                <div class="nc-sketch-arrow">
+                    <svg width="34" height="20" viewBox="0 0 34 20" fill="none">
+                        <path d="M2 10 C10 8 20 12 30 10 M24 4 L31 10 L24 16" stroke="var(--ink-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="nc-sketch-node">
+                    <span class="nc-snode-num">&#9313; Step 2</span>
+                    <div class="nc-snode-title">{lbl2_h}</div>
+                    <div class="nc-snode-body">{dtl2_h}</div>
+                </div>
+                <div class="nc-sketch-arrow">
+                    <svg width="34" height="20" viewBox="0 0 34 20" fill="none">
+                        <path d="M2 10 C10 8 20 12 30 10 M24 4 L31 10 L24 16" stroke="var(--ink-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="nc-sketch-node">
+                    <span class="nc-snode-num">&#9314; Step 3</span>
+                    <div class="nc-snode-title">{lbl3_h}</div>
+                    <div class="nc-snode-body">{dtl3_h}</div>
+                </div>
+            </div>
+        </div>
+        """
+
+    # Archetype 2: Layered Component Architecture Stack (Tiers)
+    elif archetype_id == 2:
+        return f"""
+        <div class="nc-paper-diagram-box">
+            <div class="nc-pdiag-title">&#x2500;&#x2500; Fig 02: {diag_title} &#x2500;&#x2500;</div>
+            <div class="nc-pdiag-stack-wrap">
+                <div class="nc-sketch-tier">
+                    <span class="nc-tier-badge">Tier 1: Frontend &amp; Input</span>
+                    <span class="nc-tier-label">{lbl1_h}:</span>
+                    <span class="nc-tier-detail">{dtl1_h}</span>
+                </div>
+                <div class="nc-tier-arrow-down">
+                    <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+                        <path d="M9 1 V11 M4 7 L9 12 L14 7" stroke="var(--ink-accent)" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="nc-sketch-tier nc-tier-core">
+                    <span class="nc-tier-badge">Tier 2: Processing Engine</span>
+                    <span class="nc-tier-label">{lbl2_h}:</span>
+                    <span class="nc-tier-detail">{dtl2_h}</span>
+                </div>
+                <div class="nc-tier-arrow-down">
+                    <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+                        <path d="M9 1 V11 M4 7 L9 12 L14 7" stroke="var(--ink-accent)" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="nc-sketch-tier">
+                    <span class="nc-tier-badge">Tier 3: Storage &amp; Output</span>
+                    <span class="nc-tier-label">{lbl3_h}:</span>
+                    <span class="nc-tier-detail">{dtl3_h}</span>
+                </div>
+            </div>
+        </div>
+        """
+
+    # Archetype 3: Iterative Closed-Loop Cycle / Workflow Loop
+    elif archetype_id == 3:
+        return f"""
+        <div class="nc-paper-diagram-box">
+            <div class="nc-pdiag-title">&#x2500;&#x2500; Fig 03: {diag_title} (Execution Loop) &#x2500;&#x2500;</div>
+            <div class="nc-pdiag-cycle-wrap">
+                <div class="nc-cycle-top-row">
+                    <div class="nc-sketch-node nc-cycle-node">
+                        <span class="nc-snode-num">&#9312; Plan &amp; Reason</span>
+                        <div class="nc-snode-title">{lbl1_h}</div>
+                        <div class="nc-snode-body">{dtl1_h}</div>
+                    </div>
+                    <div class="nc-cycle-arrow-top">
+                        <svg width="50" height="22" viewBox="0 0 50 22" fill="none">
+                            <path d="M4 11 C18 4 32 4 46 11 M38 5 L47 12 L39 17" stroke="var(--ink-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="nc-sketch-node nc-cycle-node">
+                        <span class="nc-snode-num">&#9313; Act &amp; Execute</span>
+                        <div class="nc-snode-title">{lbl2_h}</div>
+                        <div class="nc-snode-body">{dtl2_h}</div>
+                    </div>
+                </div>
+                <div class="nc-cycle-return-row">
+                    <svg width="100%" height="28" viewBox="0 0 460 28" fill="none">
+                        <path d="M410 2 C410 22 280 24 230 24 C150 24 50 24 50 2 M44 8 L50 2 L56 7" stroke="var(--ink-primary)" stroke-width="2" stroke-dasharray="4,3" stroke-linecap="round"/>
+                        <text x="160" y="20" font-family="'FontoshanHandwrite', cursive" font-size="14" fill="var(--ink-secondary)">&#x21bb; Feedback &amp; Verification Loop</text>
+                    </svg>
+                    <div class="nc-sketch-node nc-cycle-bottom-node">
+                        <span class="nc-snode-num">&#9314; Evaluate &amp; Store:</span> <strong>{lbl3_h}</strong> &#8212; {dtl3_h}
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+
+    # Archetype 4: Decision Branching / Router Guardrail
+    elif archetype_id == 4:
+        return f"""
+        <div class="nc-paper-diagram-box">
+            <div class="nc-pdiag-title">&#x2500;&#x2500; Fig 04: {diag_title} &#x2500;&#x2500;</div>
+            <div class="nc-pdiag-branch-wrap">
+                <div class="nc-sketch-node nc-branch-input">
+                    <span class="nc-snode-num">&#9312; Input / Trigger</span>
+                    <div class="nc-snode-title">{lbl1_h}</div>
+                    <div class="nc-snode-body">{dtl1_h}</div>
+                </div>
+                <div class="nc-branch-fork-svg">
+                    <svg width="34" height="68" viewBox="0 0 34 68" fill="none">
+                        <path d="M2 34 C14 34 18 16 30 16 M24 11 L31 16 L24 21" stroke="var(--ink-accent)" stroke-width="2.2" stroke-linecap="round"/>
+                        <path d="M2 34 C14 34 18 52 30 52 M24 47 L31 52 L24 57" stroke="var(--ink-primary)" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="nc-branch-paths">
+                    <div class="nc-sketch-node nc-branch-sub">
+                        <span class="nc-snode-num">&#9313; Primary Execution:</span> <strong>{lbl2_h}</strong> &#8212; {dtl2_h}
+                    </div>
+                    <div class="nc-sketch-node nc-branch-sub nc-branch-fallback">
+                        <span class="nc-snode-num">&#9314; Guardrail &amp; Fallback:</span> <strong>{lbl3_h}</strong> &#8212; {dtl3_h}
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+
+    # Archetype 5: Trade-Off & Deployment Balance Matrix
+    elif archetype_id == 5:
+        return f"""
+        <div class="nc-paper-diagram-box">
+            <div class="nc-pdiag-title">&#x2500;&#x2500; Fig 05: {diag_title} &#x2500;&#x2500;</div>
+            <div class="nc-pdiag-matrix-wrap">
+                <div class="nc-matrix-col">
+                    <div class="nc-sketch-node nc-matrix-card">
+                        <span class="nc-snode-num">&#9878; Performance &amp; Latency</span>
+                        <div class="nc-snode-title">{lbl1_h}</div>
+                        <div class="nc-snode-body">{dtl1_h}</div>
+                    </div>
+                </div>
+                <div class="nc-matrix-divider">
+                    <svg width="22" height="74" viewBox="0 0 22 74" fill="none">
+                        <line x1="11" y1="2" x2="11" y2="72" stroke="var(--ink-secondary)" stroke-width="1.8" stroke-dasharray="3,3"/>
+                        <text x="3" y="40" font-family="'FontoshanHandwrite', cursive" font-size="13" font-weight="bold" fill="var(--ink-accent)">VS</text>
+                    </svg>
+                </div>
+                <div class="nc-matrix-col">
+                    <div class="nc-sketch-node nc-matrix-card">
+                        <span class="nc-snode-num">&#10004; Accuracy &amp; Reliability</span>
+                        <div class="nc-snode-title">{lbl2_h}</div>
+                        <div class="nc-snode-body">{dtl2_h}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="nc-matrix-footer-note">
+                <span class="nc-snode-num">&#9733; Deployment Rule:</span> <strong>{lbl3_h}</strong> &#8212; {dtl3_h}
+            </div>
+        </div>
+        """
+
+    # Archetype 6: Revision / Glossary Deep Dive Concept Cards
+    else:
+        return f"""
+        <div class="nc-paper-diagram-box">
+            <div class="nc-pdiag-title">&#x2500;&#x2500; Revision Recall Map: Core Concepts &#x2500;&#x2500;</div>
+            <div class="nc-pdiag-flow-horizontal">
+                <div class="nc-sketch-node">
+                    <span class="nc-snode-num">&#9733; 01 Concept</span>
+                    <div class="nc-snode-title">{lbl1_h}</div>
+                    <div class="nc-snode-body">{dtl1_h}</div>
+                </div>
+                <div class="nc-sketch-node">
+                    <span class="nc-snode-num">&#9881; 02 Execution</span>
+                    <div class="nc-snode-title">{lbl2_h}</div>
+                    <div class="nc-snode-body">{dtl2_h}</div>
+                </div>
+                <div class="nc-sketch-node">
+                    <span class="nc-snode-num">&#9878; 03 Trade-offs</span>
+                    <div class="nc-snode-title">{lbl3_h}</div>
+                    <div class="nc-snode-body">{dtl3_h}</div>
+                </div>
+            </div>
+        </div>
+        """
+
+
+# =====================================================================
+# 8. HTML SLIDE BUILDER WITH AUTHENTIC PAPER CANVAS
 # =====================================================================
 def _format_inline_highlights(text: str) -> str:
-    escaped = html.escape(str(text or ""))
+    cleaned = strip_emojis(text)
+    escaped = html.escape(str(cleaned or ""))
     return re.sub(
         r"\*\*(.+?)\*\*",
         r'<mark class="hl-mark">\1</mark>',
@@ -380,22 +756,29 @@ def _format_inline_highlights(text: str) -> str:
 def _extract_slide_fields(slide: Any, fallback_page_num: int) -> dict:
     """Safely extracts slide fields from either current or legacy NotePage objects."""
     page_number = getattr(slide, "page_number", fallback_page_num)
-    title = getattr(slide, "title", f"Concept Slide {page_number}")
-    summary_banner = getattr(slide, "summary_banner", None) or getattr(
-        slide, "highlight", None
-    ) or getattr(slide, "subtitle", "")
-    bullet_points = getattr(slide, "bullet_points", None) or getattr(
-        slide, "key_points", []
+    title = strip_emojis(getattr(slide, "title", f"Concept Slide {page_number}"))
+    summary_banner = strip_emojis(
+        getattr(slide, "summary_banner", None)
+        or getattr(slide, "highlight", None)
+        or getattr(slide, "subtitle", "")
     )
-    diagram_title = getattr(slide, "diagram_title", "System Architecture & Flow")
+    bullet_points = [
+        strip_emojis(b)
+        for b in (getattr(slide, "bullet_points", None) or getattr(slide, "key_points", []))
+    ]
+    diagram_title = strip_emojis(
+        getattr(slide, "diagram_title", "System Architecture & Flow")
+    )
     diagram_steps = getattr(slide, "diagram_steps", [])
-    pro_tip = getattr(slide, "pro_tip", None) or getattr(slide, "exam_note", "")
+    pro_tip = strip_emojis(
+        getattr(slide, "pro_tip", None) or getattr(slide, "exam_note", "")
+    )
 
     normalized_steps = []
     for idx, step in enumerate(diagram_steps[:3]):
-        lbl = getattr(step, "step_label", f"Step 0{idx + 1}")
-        dtl = getattr(step, "step_detail", None) or getattr(
-            step, "step_description", ""
+        lbl = strip_emojis(getattr(step, "step_label", f"Step 0{idx + 1}"))
+        dtl = strip_emojis(
+            getattr(step, "step_detail", None) or getattr(step, "step_description", "")
         )
         normalized_steps.append((lbl, dtl))
 
@@ -410,23 +793,90 @@ def _extract_slide_fields(slide: Any, fallback_page_num: int) -> dict:
     }
 
 
-def _build_slide_card_html(
-    slide: Any,
+def _build_realistic_slide_html(
+    fields: dict,
     total_pages: int,
     topic: str,
     subject_category: str,
-    idx: int = 1,
-    template_key: str = "classic_ruled",
+    norm_key: str,
 ) -> str:
-    norm_key = normalize_template_key(template_key)
-    is_realistic = norm_key in ("classic_ruled", "vintage_kraft")
-    fields = _extract_slide_fields(slide, idx)
+    """
+    Renders 100% PURE PHYSICAL PAPER NOTE.
+    Zero digital pills, zero container boxes around bullets, zero monospace fonts,
+    zero digital watermarks. Uses real photographic paper ruling, handwritten ink,
+    an authentic hand-sketched diagram, and a realistic 3M Post-It sticky note.
+    """
+    page_num = fields["page_number"]
 
-    # Bullet point rendering: In realistic mode, numbers are handwritten directly on paper lines
-    bullet_prefix = "0" if is_realistic else "0"
+    # Clean physical notebook features: Pristine margin line (zero clunky fake 3D holes!)
+    decorations_html = '<div class="nc-margin-line"></div>'
+    postit_top_decor = '<div class="nc-postit-tape"></div>'
+
+    # Bullets written directly on the paper ruling lines (zero web cards!)
+    bullets_html = "".join(
+        f'<li class="nc-paper-bullet-item">'
+        f'<span class="nc-pbullet-mark">&#8212; 0{i + 1}.</span>'
+        f'<div class="nc-pbullet-text">{_format_inline_highlights(b)}</div>'
+        f'</li>'
+        for i, b in enumerate(fields["bullet_points"])
+    )
+
+    # Dynamic, varied hand-sketched technical diagram for this specific slide
+    diagram_html = _render_authentic_handwritten_diagram(fields, page_num, total_pages, norm_key)
+
+    return f"""
+    <div class="nc-canvas nc-theme-{norm_key}" id="nc-slide-{page_num}" data-page="{page_num}">
+        {decorations_html}
+        <div class="nc-inner nc-paper-inner">
+            <div class="nc-paper-header">
+                <span class="nc-ph-meta">Course: {html.escape(subject_category)}  //  {html.escape(topic)}</span>
+                <span class="nc-ph-page">Page {page_num:02d} / {total_pages:02d}</span>
+            </div>
+            <div class="nc-paper-header-rule"></div>
+
+            <div class="nc-paper-title-wrap">
+                <h1 class="nc-paper-title">#0{page_num}. {html.escape(fields['title'])}</h1>
+                <svg class="nc-paper-title-underline" width="280" height="8" viewBox="0 0 280 8" fill="none">
+                    <path d="M2 5 C60 1 120 7 180 4 C220 2 260 6 278 4" stroke="var(--ink-accent)" stroke-width="2.6" stroke-linecap="round"/>
+                </svg>
+            </div>
+
+            <div class="nc-paper-concept">
+                <span class="nc-concept-tag">&#9733; Core Concept:</span>
+                <span class="nc-concept-body">{_format_inline_highlights(fields['summary_banner'])}</span>
+            </div>
+
+            <ul class="nc-paper-bullets">
+                {bullets_html}
+            </ul>
+
+            {diagram_html}
+
+            <div class="nc-paper-footer">
+                <div class="nc-paper-postit">
+                    {postit_top_decor}
+                    <div class="nc-postit-header">&#10022; Exam Revision Tip:</div>
+                    <div class="nc-postit-body">{_format_inline_highlights(fields['pro_tip'])}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def _build_digital_slide_html(
+    fields: dict,
+    total_pages: int,
+    topic: str,
+    subject_category: str,
+    norm_key: str,
+) -> str:
+    """Renders sleek digital tablet study cards (iPad GoodNotes / Notability Cyber Dark)."""
+    page_num = fields["page_number"]
+
     bullets_html = "".join(
         f'<li class="nc-bullet-item">'
-        f'<span class="nc-bullet-dot">{bullet_prefix}{i + 1}.</span>'
+        f'<span class="nc-bullet-dot">0{i + 1}.</span>'
         f'<div class="nc-bullet-text">{_format_inline_highlights(b)}</div>'
         f'</li>'
         for i, b in enumerate(fields["bullet_points"])
@@ -451,54 +901,31 @@ def _build_slide_card_html(
             )
     steps_html = "\n".join(steps_parts)
 
-    # Template-specific realistic / digital physical elements
-    decorations_html = ""
-    protip_tape_html = ""
     top_bar_extra = ""
-
-    if norm_key == "classic_ruled":
-        decorations_html = """
-        <div class="nc-binder-hole nc-hole-top"></div>
-        <div class="nc-binder-hole nc-hole-mid"></div>
-        <div class="nc-binder-hole nc-hole-bot"></div>
-        <div class="nc-margin-line"></div>
-        """
-        protip_tape_html = '<span class="nc-pin-doodle">📌</span>'
-    elif norm_key == "vintage_kraft":
-        decorations_html = """
-        <div class="nc-margin-line"></div>
-        <div class="nc-kraft-texture-overlay"></div>
-        """
-        protip_tape_html = '<div class="nc-scotch-tape"></div>'
-    elif norm_key == "digital_ipad":
+    if norm_key == "digital_ipad":
         top_bar_extra = """
         <div class="nc-digital-statusbar">
             <span class="nc-ds-time">9:41 AM</span>
-            <span class="nc-ds-title">GoodNotes 6  ✦  Study Deck</span>
-            <span class="nc-ds-battery">✦ Apple Pencil 100% 🔋</span>
+            <span class="nc-ds-title">GoodNotes 6  //  Study Deck</span>
+            <span class="nc-ds-battery">APPLE PENCIL 100% CHARGED</span>
         </div>
         """
-        protip_tape_html = '<span class="nc-sparkle-doodle">💡</span>'
     elif norm_key == "digital_dark":
         top_bar_extra = """
         <div class="nc-digital-statusbar nc-cyber-statusbar">
             <span class="nc-ds-time">23:42</span>
             <span class="nc-ds-title">NOTABILITY // CYBER DARK AMOLED</span>
-            <span class="nc-ds-battery">⚡ STYLUS ACTIVE 100%</span>
+            <span class="nc-ds-battery">STYLUS ACTIVE</span>
         </div>
         """
-        protip_tape_html = '<span class="nc-sparkle-doodle">⚡</span>'
-
-    summary_tag_label = "KEY CONCEPT //" if is_realistic else "KEY IDEA"
 
     return f"""
-    <div class="nc-canvas nc-theme-{norm_key}" id="nc-slide-{fields['page_number']}" data-page="{fields['page_number']}">
-        {decorations_html}
+    <div class="nc-canvas nc-theme-{norm_key}" id="nc-slide-{page_num}" data-page="{page_num}">
         <div class="nc-inner">
             {top_bar_extra}
             <div class="nc-topbar">
                 <div class="nc-subject-pill">NIWNOTES  //  {html.escape(subject_category.upper())}</div>
-                <div class="nc-page-pill">PAGE {fields['page_number']:02d} OF {total_pages:02d}</div>
+                <div class="nc-page-pill">PAGE {page_num:02d} OF {total_pages:02d}</div>
             </div>
 
             <div class="nc-topic-kicker">{html.escape(topic)}</div>
@@ -510,7 +937,7 @@ def _build_slide_card_html(
             </div>
 
             <div class="nc-summary-banner">
-                <span class="nc-summary-tag">{summary_tag_label}</span>
+                <span class="nc-summary-tag">KEY IDEA</span>
                 <p class="nc-summary-text">{_format_inline_highlights(fields['summary_banner'])}</p>
             </div>
 
@@ -523,15 +950,16 @@ def _build_slide_card_html(
                     <span class="nc-diagram-dot"></span>
                     <span class="nc-diagram-title">{html.escape(fields['diagram_title'])}</span>
                 </div>
-                <div class="nc-diagram-grid">
-                    {steps_html}
+                <div class="nc-diagram-grid-wrap">
+                    <div class="nc-diagram-grid">
+                        {steps_html}
+                    </div>
                 </div>
             </div>
 
             <div class="nc-footer-row">
                 <div class="nc-protip-box">
-                    {protip_tape_html}
-                    <span class="nc-protip-label">EXAM / PRO TIP:</span>
+                    <span class="nc-protip-label">EXAM TIP:</span>
                     <span class="nc-protip-text">{_format_inline_highlights(fields['pro_tip'])}</span>
                 </div>
                 <div class="nc-watermark">NIWNOTES STUDIO</div>
@@ -539,6 +967,24 @@ def _build_slide_card_html(
         </div>
     </div>
     """
+
+
+def _build_slide_card_html(
+    slide: Any,
+    total_pages: int,
+    topic: str,
+    subject_category: str,
+    idx: int = 1,
+    template_key: str = "classic_ruled",
+) -> str:
+    norm_key = normalize_template_key(template_key)
+    is_realistic = norm_key in ("classic_ruled", "vintage_kraft")
+    fields = _extract_slide_fields(slide, idx)
+
+    if is_realistic:
+        return _build_realistic_slide_html(fields, total_pages, topic, subject_category, norm_key)
+    else:
+        return _build_digital_slide_html(fields, total_pages, topic, subject_category, norm_key)
 
 
 def build_interactive_studio_html(
@@ -552,9 +998,8 @@ def build_interactive_studio_html(
     **kwargs,
 ) -> str:
     """
-    Renders the entire multi-page handwritten note studio directly in the user's browser
-    with authentic handwritten Sinhala + English fonts, 2 realistic paper templates + 2 digital stylus templates,
-    responsive mobile/tablet scaling, and client-side GPU PNG/ZIP export.
+    Renders the multi-page handwritten note studio with authentic high-res real paper textures,
+    hand-drawn SVG diagrams, extra glossary deep-dive page, and zero emojis.
     """
     norm_key = normalize_template_key(template_key)
 
@@ -568,11 +1013,10 @@ def build_interactive_studio_html(
         social_caption_text = caption
 
     theme_css_map = {
-        "classic_ruled": """
+        "classic_ruled": f"""
+            --real-paper-bg: url('data:image/jpeg;base64,{_RULED_PAPER_B64}');
             --paper-bg: #FCFBF7;
-            --paper-grid: repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, rgba(160, 185, 215, 0.45) 32px);
-            --paper-grid-size: 100% 32px;
-            --margin-line: rgba(239, 68, 68, 0.65);
+            --margin-line: rgba(225, 68, 68, 0.7);
             --ink-primary: #152E5A;
             --ink-secondary: #1E3A8A;
             --ink-accent: #DC2626;
@@ -582,17 +1026,15 @@ def build_interactive_studio_html(
             --hl-ink: #713F12;
             --card-bg: transparent;
             --card-border: #152E5A;
-            --step-bg: rgba(255, 255, 255, 0.6);
+            --step-bg: rgba(255, 255, 255, 0.65);
             --protip-bg: #FEF08A;
             --protip-border: #EAB308;
             --font-tilt: -0.2deg;
         """,
-        "vintage_kraft": """
+        "vintage_kraft": f"""
+            --real-paper-bg: url('data:image/jpeg;base64,{_KRAFT_PAPER_B64}');
             --paper-bg: #F7F1E5;
-            --paper-grid: linear-gradient(to right, rgba(139, 94, 60, 0.16) 1px, transparent 1px),
-                          linear-gradient(to bottom, rgba(139, 94, 60, 0.16) 1px, transparent 1px);
-            --paper-grid-size: 18px 18px;
-            --margin-line: rgba(180, 83, 9, 0.48);
+            --margin-line: rgba(180, 83, 9, 0.5);
             --ink-primary: #1F1610;
             --ink-secondary: #4A3324;
             --ink-accent: #C2410C;
@@ -602,12 +1044,13 @@ def build_interactive_studio_html(
             --hl-ink: #451A03;
             --card-bg: transparent;
             --card-border: #78350F;
-            --step-bg: rgba(255, 255, 255, 0.55);
+            --step-bg: rgba(255, 255, 255, 0.58);
             --protip-bg: #FFFBEB;
             --protip-border: #B45309;
             --font-tilt: -0.3deg;
         """,
         "digital_ipad": """
+            --real-paper-bg: none;
             --paper-bg: #F8FAFC;
             --paper-grid: radial-gradient(#CBD5E1 1.25px, transparent 1.25px);
             --paper-grid-size: 22px 22px;
@@ -627,6 +1070,7 @@ def build_interactive_studio_html(
             --font-tilt: 0deg;
         """,
         "digital_dark": """
+            --real-paper-bg: none;
             --paper-bg: #0B0F19;
             --paper-grid: radial-gradient(rgba(56, 189, 248, 0.22) 1.25px, transparent 1.25px);
             --paper-grid-size: 24px 24px;
@@ -666,12 +1110,11 @@ def build_interactive_studio_html(
         for i, s in enumerate(slide_list)
     )
 
-    escaped_caption = html.escape(social_caption_text)
+    escaped_caption = html.escape(strip_emojis(social_caption_text))
     lang_badge = "SINHALA + ENGLISH KUPPI MIX" if language == "Sinhala_Mix" else "100% PURE ENGLISH"
     tpl_meta = NOTE_TEMPLATES.get(norm_key, NOTE_TEMPLATES["classic_ruled"])
     tpl_style_badge = f"{tpl_meta['category'].upper()} // {tpl_meta['badge'].upper()}"
 
-    # Base64 embedded font CSS block
     font_face_css = ""
     if _FONT_B64:
         font_face_css = f"""
@@ -945,9 +1388,6 @@ def build_interactive_studio_html(
     .nc-canvas {{
         width: 1000px;
         height: 1250px;
-        background-color: var(--paper-bg);
-        background-image: var(--paper-grid);
-        background-size: var(--paper-grid-size);
         position: relative;
         overflow: hidden;
         color: var(--ink-primary);
@@ -957,11 +1397,36 @@ def build_interactive_studio_html(
         text-shadow: 0 0 0.4px rgba(20, 20, 19, 0.25);
     }}
 
-    /* REALISTIC TEMPLATES: PHYSICAL PAPER LOOK (NO CARDS, PURE HANDWRITING) */
-    .nc-theme-classic_ruled,
-    .nc-theme-vintage_kraft {{
+    /* REALISTIC TEMPLATES: REAL HIGH-RESOLUTION PHOTOGRAPHIC PAPER BACKGROUNDS */
+    .nc-theme-classic_ruled {{
+        background-color: #FCFBF7;
+        background-image: var(--real-paper-bg);
+        background-size: 1000px 1250px;
+        background-repeat: no-repeat;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 18px 45px -8px rgba(0,0,0,0.22);
         border-radius: 3px;
+    }}
+
+    .nc-theme-vintage_kraft {{
+        background-color: #F7F1E5;
+        background-image: var(--real-paper-bg);
+        background-size: 1000px 1250px;
+        background-repeat: no-repeat;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 18px 45px -8px rgba(0,0,0,0.22);
+        border-radius: 3px;
+    }}
+
+    /* DIGITAL TEMPLATES: MODERN MATTE CANVAS */
+    .nc-theme-digital_ipad {{
+        background-color: var(--paper-bg);
+        background-image: var(--paper-grid);
+        background-size: var(--paper-grid-size);
+    }}
+
+    .nc-theme-digital_dark {{
+        background-color: var(--paper-bg);
+        background-image: var(--paper-grid);
+        background-size: var(--paper-grid-size);
     }}
 
     /* MARGIN LINE & BINDER HOLES (PHYSICAL PAPER FEATURES) */
@@ -972,24 +1437,13 @@ def build_interactive_studio_html(
         left: 82px;
         width: 2.2px;
         background: var(--margin-line);
-        box-shadow: 1px 0 0 rgba(239, 68, 68, 0.15);
+        box-shadow: 1px 0 0 rgba(225, 68, 68, 0.2);
         z-index: 2;
     }}
 
     .nc-binder-hole {{
-        position: absolute;
-        left: 22px;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: radial-gradient(circle at 35% 35%, #DDD6C8 0%, #B4AC98 65%, #8E8570 100%);
-        box-shadow: inset 2px 2px 5px rgba(0,0,0,0.45), 1px 1px 2px rgba(255,255,255,0.7);
-        border: 1px solid rgba(0,0,0,0.12);
-        z-index: 5;
+        display: none !important;
     }}
-    .nc-hole-top {{ top: 140px; }}
-    .nc-hole-mid {{ top: 625px; }}
-    .nc-hole-bot {{ top: 1100px; }}
 
     /* SCOTCH TAPE STRIP (VINTAGE KRAFT STICKY EFFECT) */
     .nc-scotch-tape {{
@@ -1006,7 +1460,15 @@ def build_interactive_studio_html(
         z-index: 8;
     }}
 
-    /* DIGITAL TABLET STATUS BAR (IPAD / NOTABILITY) */
+    .nc-pushpin-vector {{
+        position: absolute;
+        top: -10px;
+        left: 20px;
+        z-index: 8;
+        transform: rotate(-10deg);
+    }}
+
+    /* DIGITAL TABLET STATUS BAR (IPAD / NOTABILITY - ZERO EMOJIS) */
     .nc-digital-statusbar {{
         display: flex;
         align-items: center;
@@ -1318,11 +1780,28 @@ def build_interactive_studio_html(
         letter-spacing: 0 !important;
     }}
 
+    .nc-diagram-grid-wrap {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }}
+
     .nc-diagram-grid {{
         display: flex;
         align-items: stretch;
         justify-content: space-between;
         gap: 8px;
+        flex: 1;
+    }}
+
+    .nc-sketch-slot {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        padding-left: 8px;
+        border-left: 1.5px dashed rgba(20, 20, 19, 0.15);
     }}
 
     .nc-step-card {{
@@ -1473,11 +1952,433 @@ def build_interactive_studio_html(
     }}
     .nc-theme-classic_ruled .nc-watermark,
     .nc-theme-vintage_kraft .nc-watermark {{
+        display: none !important;
+    }}
+
+    /* =====================================================================
+       AUTHENTIC PHYSICAL PAPER NOTE STYLES (100% PURE HANDWRITING)
+       ===================================================================== */
+    .nc-paper-inner {{
+        position: relative;
+        z-index: 3;
+        padding: 34px 44px 30px 104px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-sizing: border-box;
+    }}
+
+    .nc-paper-header {{
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
         font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
-        font-size: 18px;
+        color: var(--ink-secondary);
+        padding-bottom: 2px;
+    }}
+
+    .nc-ph-meta {{
+        font-size: 21px;
         font-weight: 700;
         color: var(--ink-secondary);
-        opacity: 0.75;
+        letter-spacing: 0.01em;
+    }}
+
+    .nc-ph-page {{
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--ink-primary);
+    }}
+
+    .nc-paper-header-rule {{
+        width: 100%;
+        height: 1.8px;
+        background: var(--margin-line);
+        opacity: 0.65;
+        margin-bottom: 6px;
+    }}
+
+    .nc-paper-title-wrap {{
+        margin: 2px 0 6px 0;
+    }}
+
+    .nc-paper-title {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 38px;
+        font-weight: 800;
+        line-height: 1.15;
+        color: var(--ink-primary);
+        margin: 0;
+    }}
+
+    .nc-paper-title-underline {{
+        display: block;
+        margin-top: 2px;
+    }}
+
+    .nc-paper-concept {{
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin: 6px 0 10px 0;
+        padding: 4px 8px;
+        background: var(--banner-bg);
+        border-left: 4px solid var(--banner-border);
+        border-radius: 2px 6px 6px 2px;
+    }}
+
+    .nc-concept-tag {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--ink-accent);
+        flex-shrink: 0;
+    }}
+
+    .nc-concept-body {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 21px;
+        font-weight: 600;
+        line-height: 1.38;
+        color: var(--ink-primary);
+    }}
+
+    .nc-paper-bullets {{
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin: 6px 0 10px 0;
+        padding: 0;
+    }}
+
+    .nc-paper-bullet-item {{
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        background: transparent !important;
+        border: none !important;
+        padding: 2px 0;
+    }}
+
+    .nc-pbullet-mark {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--ink-accent);
+        min-width: 38px;
+        flex-shrink: 0;
+        line-height: 1.35;
+    }}
+
+    .nc-pbullet-text {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 21px;
+        font-weight: 600;
+        line-height: 1.42;
+        color: var(--ink-primary);
+    }}
+
+    /* AUTHENTIC HANDWRITTEN DIAGRAM CONTAINER */
+    .nc-paper-diagram-box {{
+        margin: 8px 0;
+        padding: 10px 14px;
+        border: 1.8px dashed rgba(21, 46, 90, 0.45);
+        border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+        background: rgba(255, 255, 255, 0.4);
+        box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.04);
+    }}
+
+    .nc-theme-vintage_kraft .nc-paper-diagram-box {{
+        border-color: rgba(120, 53, 15, 0.45);
+        background: rgba(255, 255, 255, 0.25);
+    }}
+
+    .nc-pdiag-title {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--ink-accent);
+        text-align: center;
+        margin-bottom: 8px;
+        letter-spacing: 0.02em;
+    }}
+
+    /* DIAGRAM NODES (ORGANIC HAND-DRAWN SKETCH BOXES) */
+    .nc-sketch-node {{
+        background: rgba(255, 255, 255, 0.65);
+        border: 2px solid var(--ink-primary);
+        border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+        padding: 8px 12px;
+        box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.08);
+    }}
+
+    .nc-snode-num {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 17px;
+        font-weight: 800;
+        color: var(--ink-accent);
+        display: inline-block;
+        margin-bottom: 2px;
+    }}
+
+    .nc-snode-title {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--ink-primary);
+        line-height: 1.2;
+        margin-bottom: 3px;
+        border-bottom: 1.2px dashed rgba(21, 46, 90, 0.3);
+        padding-bottom: 2px;
+    }}
+
+    .nc-snode-body {{
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 16.5px;
+        font-weight: 600;
+        color: var(--ink-secondary);
+        line-height: 1.3;
+    }}
+
+    /* FLOW 1: HORIZONTAL PIPELINE */
+    .nc-pdiag-flow-horizontal {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }}
+
+    .nc-pdiag-flow-horizontal .nc-sketch-node {{
+        flex: 1;
+        min-width: 0;
+    }}
+
+    .nc-sketch-arrow {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }}
+
+    /* FLOW 2: ARCHITECTURE STACK */
+    .nc-pdiag-stack-wrap {{
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }}
+
+    .nc-sketch-tier {{
+        background: rgba(255, 255, 255, 0.65);
+        border: 1.8px solid var(--ink-primary);
+        border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+        padding: 6px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+    }}
+
+    .nc-tier-core {{
+        background: rgba(254, 240, 138, 0.45);
+        border-color: var(--ink-accent);
+    }}
+
+    .nc-tier-badge {{
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--ink-accent);
+        border-right: 1.5px dashed var(--ink-accent);
+        padding-right: 8px;
+        flex-shrink: 0;
+    }}
+
+    .nc-tier-label {{
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--ink-primary);
+        flex-shrink: 0;
+    }}
+
+    .nc-tier-detail {{
+        font-size: 16.5px;
+        font-weight: 600;
+        color: var(--ink-secondary);
+        line-height: 1.25;
+    }}
+
+    .nc-tier-arrow-down {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }}
+
+    /* FLOW 3: CYCLIC FEEDBACK LOOP */
+    .nc-pdiag-cycle-wrap {{
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }}
+
+    .nc-cycle-top-row {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }}
+
+    .nc-cycle-node {{
+        flex: 1;
+        min-width: 0;
+    }}
+
+    .nc-cycle-arrow-top {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }}
+
+    .nc-cycle-return-row {{
+        position: relative;
+        text-align: center;
+    }}
+
+    .nc-cycle-bottom-node {{
+        margin-top: -6px;
+        padding: 6px 12px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 17px;
+    }}
+
+    /* FLOW 4: BRANCHING FLOW */
+    .nc-pdiag-branch-wrap {{
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }}
+
+    .nc-branch-input {{
+        flex: 1.1;
+    }}
+
+    .nc-branch-fork-svg {{
+        flex-shrink: 0;
+    }}
+
+    .nc-branch-paths {{
+        flex: 1.9;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }}
+
+    .nc-branch-sub {{
+        padding: 6px 10px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 16.5px;
+    }}
+
+    .nc-branch-fallback {{
+        border-style: dashed;
+        background: rgba(255, 255, 255, 0.45);
+    }}
+
+    /* FLOW 5: TRADE-OFF MATRIX */
+    .nc-pdiag-matrix-wrap {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }}
+
+    .nc-matrix-col {{
+        flex: 1;
+    }}
+
+    .nc-matrix-card {{
+        min-height: 70px;
+    }}
+
+    .nc-matrix-divider {{
+        flex-shrink: 0;
+    }}
+
+    .nc-matrix-footer-note {{
+        margin-top: 6px;
+        padding: 5px 10px;
+        background: rgba(254, 240, 138, 0.4);
+        border: 1.2px dashed var(--banner-border);
+        border-radius: 4px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        font-size: 16.5px;
+        color: var(--ink-primary);
+    }}
+
+    /* PHYSICAL POST-IT STICKY NOTE (AUTHENTIC HANDWRITTEN EXAM TIP) */
+    .nc-paper-footer {{
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-start;
+        padding-top: 2px;
+        margin-top: 4px;
+    }}
+
+    .nc-paper-postit {{
+        position: relative;
+        width: auto;
+        max-width: 540px;
+        padding: 10px 18px 12px 20px;
+        font-family: 'FontoshanHandwrite', 'Caveat', 'Kalam', cursive;
+        box-sizing: border-box;
+    }}
+
+    .nc-theme-classic_ruled .nc-paper-postit {{
+        background: #FEF08A;
+        border-radius: 2px 2px 14px 2px;
+        box-shadow: 2px 6px 14px -2px rgba(0, 0, 0, 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
+        transform: rotate(-1.3deg);
+        border-top: 3px solid #EAB308;
+    }}
+
+    .nc-theme-vintage_kraft .nc-paper-postit {{
+        background: #FFFBEB;
+        border: 1.5px dashed #B45309;
+        border-radius: 3px;
+        box-shadow: 2px 6px 14px -2px rgba(0, 0, 0, 0.14);
+        transform: rotate(0.9deg);
+    }}
+
+    .nc-postit-tape {{
+        position: absolute;
+        top: -8px;
+        left: 28px;
+        width: 72px;
+        height: 16px;
+        background: rgba(255, 255, 240, 0.72);
+        border: 1px solid rgba(220, 205, 170, 0.45);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        transform: rotate(-1.5deg);
+        backdrop-filter: blur(1px);
+        z-index: 10;
+    }}
+
+    .nc-postit-header {{
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--ink-accent);
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }}
+
+    .nc-postit-body {{
+        font-size: 18.5px;
+        font-weight: 600;
+        line-height: 1.36;
+        color: var(--ink-primary);
     }}
 
     /* RIGHT COLUMN: SOCIAL CAPTION & EXPORT KIT */
@@ -1841,7 +2742,7 @@ def build_interactive_studio_html(
 
 
 # =====================================================================
-# 6. STANDALONE & CLI COMPATIBILITY EXPORT
+# 9. STANDALONE & CLI COMPATIBILITY EXPORT
 # =====================================================================
 def render_all_pages(guide: Any, author: str = "@Student", output_dir: str = "output"):
     """Saves the generated study guide HTML and caption for CLI use (main.py)."""
