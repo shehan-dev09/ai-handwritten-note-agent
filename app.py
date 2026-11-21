@@ -1,955 +1,691 @@
-import io
 import os
-import time
-import zipfile
+import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
+from trend_agent import (
+    UNIVERSITY_SUBJECTS,
+    get_default_ranked_topics,
+    get_working_models,
+    discover_viral_topics,
+)
 from note_generator import (
     NOTE_TEMPLATES,
     generate_5_page_study_guide,
-    get_working_models,
-    render_all_pages,
+    build_interactive_studio_html,
 )
-import streamlit as st
-from trend_agent import UNIVERSITY_SUBJECTS, discover_viral_topics
 
 load_dotenv()
 
 # =====================================================================
-# AUTO-SYNC CLEAN LIGHT THEME IN .streamlit/config.toml
-# =====================================================================
-os.makedirs(".streamlit", exist_ok=True)
-config_path = os.path.join(".streamlit", "config.toml")
-expected_config = (
-    '[theme]\n'
-    'base = "light"\n'
-    'primaryColor = "#141413"\n'
-    'backgroundColor = "#F7F6F2"\n'
-    'secondaryBackgroundColor = "#FFFFFF"\n'
-    'textColor = "#141413"\n'
-    'font = "sans serif"\n\n'
-    '[server]\n'
-    'headless = true\n'
-)
-if not os.path.exists(config_path) or open(config_path, "r", encoding="utf-8").read() != expected_config:
-    with open(config_path, "w", encoding="utf-8") as cf:
-        cf.write(expected_config)
-
-# =====================================================================
-# PAGE CONFIGURATION
+# 1. Page Configuration
 # =====================================================================
 st.set_page_config(
-    page_title="NIWNOTES — All-in-One University Study Note Studio",
+    page_title="NIWNOTES — University Study Notes & Carousel Studio",
+    page_icon="📓",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 # =====================================================================
-# WODAY.APP INSPIRED CLEAN macOS DESIGN SYSTEM
+# 2. Woday-Inspired macOS Light Mode CSS Design System
 # =====================================================================
-WODAY_CLEAN_CSS = """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
-
-:root, html, body, .stApp {
-    --canvas-bg: #F7F6F2;
-    --card-bg: #FFFFFF;
-    --surface-subtle: #F3F2EE;
-    --ink-primary: #141413;
-    --ink-secondary: #575653;
-    --ink-muted: #8A8884;
-    --accent-coral: #FF5A36;
-    --accent-blue: #2563EB;
-    --accent-green: #16A34A;
-    --border-hairline: rgba(20, 20, 19, 0.08);
-    --border-strong: rgba(20, 20, 19, 0.14);
-    --shadow-card: 0 14px 34px -12px rgba(20, 20, 19, 0.06),
-                   0 2px 6px -1px rgba(20, 20, 19, 0.04);
-    --shadow-pill: 0 2px 8px rgba(20, 20, 19, 0.05);
-}
-
-/* ---------- Warm Daylight Canvas ---------- */
-.stApp {
-    background:
-        radial-gradient(ellipse 65% 38% at 50% -8%, rgba(255, 168, 120, 0.14), transparent 65%),
-        radial-gradient(ellipse 45% 30% at 85% 12%, rgba(96, 165, 250, 0.08), transparent 60%),
-        var(--canvas-bg) !important;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    color: var(--ink-primary) !important;
-    overflow-x: hidden !important;
-}
-
-/* Hide Default Streamlit Chrome */
-#MainMenu,
-footer,
-header[data-testid="stHeader"],
-[data-testid="stSidebar"],
-[data-testid="collapsedControl"],
-[data-testid="stToolbar"] {
-    display: none !important;
-}
-
-.block-container {
-    max-width: 1380px !important;
-    padding: 1.25rem 1.75rem 3rem 1.75rem !important;
-    margin: 0 auto !important;
-}
-
-/* ---------- Floating macOS Pill Navigation Bar ---------- */
-.woday-nav-wrap {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 1.4rem;
-}
-
-.woday-navbar {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 0.65rem 1rem 0.65rem 0.85rem;
-    background: rgba(255, 255, 255, 0.86);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-            backdrop-filter: blur(16px) saturate(180%);
-    border: 1px solid var(--border-hairline);
-    border-radius: 16px;
-    box-shadow: var(--shadow-pill);
-}
-
-.woday-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.woday-logo-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    background: var(--ink-primary);
-    color: #FFFFFF;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-weight: 800;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 6px rgba(20, 20, 19, 0.18);
-}
-
-.woday-brand-name {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-weight: 700;
-    font-size: 0.98rem;
-    letter-spacing: -0.02em;
-    color: var(--ink-primary);
-}
-
-.woday-brand-tag {
-    font-size: 0.76rem;
-    font-weight: 500;
-    color: var(--ink-secondary);
-    background: var(--surface-subtle);
-    padding: 0.22rem 0.65rem;
-    border-radius: 99px;
-}
-
-.woday-nav-pills {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.74rem;
-    font-weight: 500;
-    color: var(--ink-secondary);
-    background: var(--surface-subtle);
-    border: 1px solid var(--border-hairline);
-    padding: 0.28rem 0.72rem;
-    border-radius: 99px;
-}
-
-.status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent-green);
-}
-
-/* ---------- Centered Clean Editorial Hero ---------- */
-.woday-hero {
-    text-align: center;
-    max-width: 760px;
-    margin: 0 auto 1.65rem auto;
-    padding: 0.25rem 0.5rem;
-}
-
-.hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    background: #FFFFFF;
-    border: 1px solid var(--border-hairline);
-    box-shadow: var(--shadow-pill);
-    padding: 0.3rem 0.85rem;
-    border-radius: 99px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--ink-secondary);
-    margin-bottom: 0.85rem;
-}
-
-.hero-badge-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent-coral);
-}
-
-.hero-headline {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-weight: 800;
-    font-size: clamp(1.95rem, 3.6vw, 2.85rem);
-    line-height: 1.08;
-    letter-spacing: -0.035em;
-    color: var(--ink-primary);
-    margin: 0 0 0.65rem 0;
-}
-
-.hero-subtitle {
-    font-size: 0.96rem;
-    line-height: 1.55;
-    color: var(--ink-secondary);
-    max-width: 600px;
-    margin: 0 auto;
-    font-weight: 400;
-}
-
-/* ---------- Elevated macOS Bento Cards ---------- */
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background: var(--card-bg) !important;
-    border: 1px solid var(--border-hairline) !important;
-    border-radius: 20px !important;
-    padding: 1.4rem 1.45rem !important;
-    box-shadow: var(--shadow-card) !important;
-}
-
-[data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] {
-    gap: 0.75rem !important;
-}
-
-[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlockBorderWrapper"] {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-}
-
-/* ---------- Card Header & macOS Window Bar ---------- */
-.card-step-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--ink-secondary);
-    background: var(--surface-subtle);
-    padding: 0.22rem 0.6rem;
-    border-radius: 6px;
-    margin-bottom: 0.3rem;
-}
-
-.card-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--ink-primary);
-    margin: 0 0 0.15rem 0;
-}
-
-.macos-window-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 0.75rem;
-    margin-bottom: 0.65rem;
-    border-bottom: 1px solid var(--border-hairline);
-}
-
-.traffic-lights {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-}
-
-.tl-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-.tl-red { background: #FF5F56; border: 1px solid rgba(0,0,0,0.06); }
-.tl-yellow { background: #FFBD2E; border: 1px solid rgba(0,0,0,0.06); }
-.tl-green { background: #27C93F; border: 1px solid rgba(0,0,0,0.06); }
-
-.window-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: var(--ink-muted);
-}
-
-/* ---------- Template Swatch Bar ---------- */
-.template-card-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface-subtle);
-    border: 1px solid var(--border-hairline);
-    border-radius: 11px;
-    padding: 0.5rem 0.8rem;
-    font-size: 0.76rem;
-    font-weight: 600;
-    color: var(--ink-primary);
-}
-
-.swatch-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.swatch-chip {
-    width: 15px;
-    height: 15px;
-    border-radius: 5px;
-    border: 1px solid rgba(20, 20, 19, 0.18);
-}
-
-/* ---------- Clean Inputs & Selectboxes ---------- */
-[data-testid="stWidgetLabel"] p, label {
-    color: var(--ink-secondary) !important;
-    font-size: 0.79rem !important;
-    font-weight: 600 !important;
-    margin-bottom: 0.15rem !important;
-}
-
-[data-baseweb="input"],
-[data-baseweb="select"] > div {
-    background-color: var(--surface-subtle) !important;
-    border: 1px solid var(--border-hairline) !important;
-    border-radius: 11px !important;
-    color: var(--ink-primary) !important;
-    min-height: 41px !important;
-    box-shadow: none !important;
-    transition: all 0.16s ease !important;
-}
-
-[data-baseweb="input"]:hover,
-[data-baseweb="select"] > div:hover {
-    border-color: var(--border-strong) !important;
-    background-color: #EFECE6 !important;
-}
-
-[data-baseweb="input"]:focus-within,
-[data-baseweb="select"] > div:focus-within {
-    background-color: #FFFFFF !important;
-    border-color: var(--ink-primary) !important;
-    box-shadow: 0 0 0 3px rgba(20, 20, 19, 0.07) !important;
-}
-
-[data-baseweb="base-input"] {
-    background: transparent !important;
-    border: none !important;
-}
-
-[data-baseweb="input"] input {
-    color: var(--ink-primary) !important;
-    font-size: 0.86rem !important;
-    font-weight: 500 !important;
-    padding: 0.5rem 0.8rem !important;
-    caret-color: var(--ink-primary) !important;
-}
-
-div[data-baseweb="popover"] ul {
-    background: #FFFFFF !important;
-    border: 1px solid var(--border-strong) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 12px 28px rgba(20, 20, 19, 0.1) !important;
-}
-
-/* ---------- Tactile macOS Buttons ---------- */
-[data-testid="stButton"] > button,
-[data-testid="stDownloadButton"] > button {
-    background: #FFFFFF !important;
-    border: 1px solid var(--border-strong) !important;
-    border-radius: 11px !important;
-    color: var(--ink-primary) !important;
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 600 !important;
-    font-size: 0.82rem !important;
-    min-height: 40px !important;
-    padding: 0.45rem 0.9rem !important;
-    box-shadow: 0 1px 2px rgba(20, 20, 19, 0.04) !important;
-    transition: all 0.16s ease !important;
-}
-
-[data-testid="stButton"] > button p,
-[data-testid="stDownloadButton"] > button p {
-    color: var(--ink-primary) !important;
-    font-weight: 600 !important;
-    font-size: 0.82rem !important;
-}
-
-[data-testid="stButton"] > button:hover,
-[data-testid="stDownloadButton"] > button:hover {
-    background: var(--surface-subtle) !important;
-    border-color: rgba(20, 20, 19, 0.28) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(20, 20, 19, 0.06) !important;
-}
-
-/* Primary Charcoal Pill Button (Woday CTA Style) */
-[data-testid="stButton"] > button[kind="primary"],
-[data-testid="stDownloadButton"] > button[kind="primary"] {
-    background: var(--ink-primary) !important;
-    color: #FFFFFF !important;
-    border: 1px solid var(--ink-primary) !important;
-    border-radius: 12px !important;
-    font-weight: 600 !important;
-    min-height: 44px !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2),
-                0 8px 20px -6px rgba(20, 20, 19, 0.35) !important;
-}
-
-[data-testid="stButton"] > button[kind="primary"] p,
-[data-testid="stButton"] > button[kind="primary"] span,
-[data-testid="stDownloadButton"] > button[kind="primary"] p,
-[data-testid="stDownloadButton"] > button[kind="primary"] span {
-    color: #FFFFFF !important;
-    font-weight: 600 !important;
-    font-size: 0.85rem !important;
-}
-
-[data-testid="stButton"] > button[kind="primary"]:hover,
-[data-testid="stDownloadButton"] > button[kind="primary"]:hover {
-    background: #272725 !important;
-    border-color: #272725 !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
-                0 12px 24px -6px rgba(20, 20, 19, 0.45) !important;
-}
-
-/* ---------- macOS Segmented Pill Tabs ---------- */
-[data-baseweb="tab-list"] {
-    background: var(--surface-subtle) !important;
-    padding: 4px !important;
-    border-radius: 12px !important;
-    gap: 4px !important;
-    border-bottom: none !important;
-    width: fit-content !important;
-    margin-bottom: 0.4rem !important;
-}
-
-button[data-baseweb="tab"] {
-    font-family: 'Inter', sans-serif !important;
-    font-size: 0.8rem !important;
-    font-weight: 500 !important;
-    color: var(--ink-secondary) !important;
-    padding: 0.4rem 0.95rem !important;
-    border-radius: 9px !important;
-    background: transparent !important;
-    border: none !important;
-    margin: 0 !important;
-}
-
-button[data-baseweb="tab"][aria-selected="true"] {
-    background: #FFFFFF !important;
-    color: var(--ink-primary) !important;
-    box-shadow: 0 2px 6px rgba(20, 20, 19, 0.08) !important;
-}
-
-button[data-baseweb="tab"][aria-selected="true"] p {
-    color: var(--ink-primary) !important;
-    font-weight: 600 !important;
-}
-
-[data-baseweb="tab-highlight"],
-[data-baseweb="tab-border"] {
-    display: none !important;
-}
-
-/* ---------- Slide Images & Code Blocks ---------- */
-[data-testid="stImage"] img {
-    border-radius: 12px !important;
-    border: 1px solid var(--border-strong) !important;
-    box-shadow: 0 8px 20px -8px rgba(20, 20, 19, 0.12) !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-[data-testid="stImage"] img:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 28px -8px rgba(20, 20, 19, 0.18) !important;
-}
-
-[data-testid="stCode"],
-[data-testid="stCodeBlock"],
-pre {
-    background: var(--surface-subtle) !important;
-    border: 1px solid var(--border-hairline) !important;
-    border-radius: 12px !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 0.82rem !important;
-    color: var(--ink-primary) !important;
-}
-
-hr {
-    border-color: var(--border-hairline) !important;
-    margin: 0.65rem 0 !important;
-}
-
-/* ---------- Mobile Responsiveness ---------- */
-@media (max-width: 768px) {
-    .block-container {
-        padding: 0.75rem 0.85rem 2rem 0.85rem !important;
-    }
-    .woday-brand-tag {
-        display: none !important;
-    }
-    .hero-headline {
-        font-size: 1.75rem;
-    }
-    .hero-subtitle {
-        font-size: 0.86rem;
-    }
-    [data-baseweb="tab-list"] {
-        width: 100% !important;
-        overflow-x: auto !important;
-    }
-}
-</style>
-"""
-
-st.markdown(WODAY_CLEAN_CSS, unsafe_allow_html=True)
-
-
-# =====================================================================
-# CACHED HELPERS FOR INSTANT SPEED
-# =====================================================================
-@st.cache_data(ttl=900, show_spinner=False)
-def cached_discover_topics(api_key: str, subject_category: str):
-    models = get_working_models(api_key)
-    return discover_viral_topics(
-        working_models=models, subject_category=subject_category, api_key=api_key
-    )
-
-
-def load_existing_output():
-    if not os.path.exists("output"):
-        return None, [], ""
-    subfolders = [
-        os.path.join("output", d)
-        for d in os.listdir("output")
-        if os.path.isdir(os.path.join("output", d))
-    ]
-    candidates = sorted(subfolders, key=os.path.getmtime, reverse=True) + ["output"]
-    for folder in candidates:
-        pages = [os.path.join(folder, f"note_page_{i}.png") for i in range(1, 6)]
-        if all(os.path.exists(p) for p in pages):
-            caption_path = os.path.join(folder, "caption.txt")
-            caption_text = (
-                open(caption_path, "r", encoding="utf-8").read()
-                if os.path.exists(caption_path)
-                else ""
-            )
-            topic_label = (
-                os.path.basename(folder).replace("_", " ")
-                if folder != "output"
-                else "Retrieval-Augmented Generation (RAG)"
-            )
-            return topic_label, pages, caption_text
-    return None, [], ""
-
-
-if "viral_topics" not in st.session_state:
-    st.session_state.viral_topics = []
-if "last_render_sec" not in st.session_state:
-    st.session_state.last_render_sec = None
-if "active_topic" not in st.session_state:
-    loaded_topic, loaded_imgs, loaded_cap = load_existing_output()
-    st.session_state.active_topic = loaded_topic
-    st.session_state.image_paths = loaded_imgs
-    st.session_state.social_caption = loaded_cap
-
-default_api_key = os.getenv("GEMINI_API_KEY", "")
-if not default_api_key:
-    try:
-        default_api_key = st.secrets.get("GEMINI_API_KEY", "")
-    except Exception:
-        default_api_key = ""
-
-
-# =====================================================================
-# TOP FLOATING macOS NAVBAR + CLEAN EDITORIAL HERO
-# =====================================================================
-speed_label = (
-    f"Rendered in {st.session_state.last_render_sec:.1f}s"
-    if st.session_state.last_render_sec
-    else "Parallel Engine Ready"
-)
-
 st.markdown(
-    f"""
-    <div class="woday-nav-wrap">
-        <div class="woday-navbar">
-            <div class="woday-brand">
-                <div class="woday-logo-icon">N</div>
-                <span class="woday-brand-name">NIWNOTES</span>
-                <span class="woday-brand-tag">University Study Studio</span>
-            </div>
-            <div class="woday-nav-pills">
-                <span class="status-pill">
-                    <span class="status-dot"></span>
-                    {speed_label}
-                </span>
-                <span class="status-pill">8 Campus Tracks</span>
-                <span class="status-pill">4 Note Styles</span>
-            </div>
-        </div>
-    </div>
+    """
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Caveat:wght@700&display=swap');
 
-    <div class="woday-hero">
-        <div class="hero-badge">
-            <span class="hero-badge-dot"></span>
-            <span>All-in-One University Study Notes &amp; Social Carousel Maker</span>
-        </div>
-        <h1 class="hero-headline">Your campus lectures, turned into clear visual notes.</h1>
-        <p class="hero-subtitle">
-            Pick your university discipline, discover trending topics or type any lecture concept, and generate a 5-page handwritten study post in seconds.
-        </p>
-    </div>
-    """,
+    :root {
+        --bg-canvas: #F7F6F2;
+        --bg-card: #FFFFFF;
+        --bg-subtle: #F3F2EE;
+        --text-main: #141413;
+        --text-muted: #575653;
+        --text-soft: #8A8884;
+        --border-hairline: rgba(20, 20, 19, 0.08);
+        --accent-coral: #FF5A36;
+    }
+
+    .stApp {
+        background-color: var(--bg-canvas) !important;
+        color: var(--text-main) !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {background: transparent !important;}
+
+    .block-container {
+        max-width: 1280px !important;
+        padding-top: 1.4rem !important;
+        padding-bottom: 4rem !important;
+    }
+
+    /* Top Navigation Bar */
+    .woday-nav {
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--border-hairline);
+        border-radius: 999px;
+        padding: 10px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px -4px rgba(20, 20, 19, 0.04);
+    }
+    .woday-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-weight: 800;
+        font-size: 1.15rem;
+        color: var(--text-main);
+        letter-spacing: -0.03em;
+    }
+    .woday-logo-box {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        background: var(--text-main);
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+    .woday-nav-pills {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .woday-pill {
+        background: var(--bg-subtle);
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 6px 13px;
+        border-radius: 999px;
+        border: 1px solid var(--border-hairline);
+    }
+    .woday-pill-active {
+        background: #DCFCE7;
+        color: #15803D;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 6px 13px;
+        border-radius: 999px;
+    }
+
+    /* Hero Header */
+    .woday-hero {
+        text-align: center;
+        max-width: 780px;
+        margin: 0 auto 24px auto;
+    }
+    .woday-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #FFFFFF;
+        border: 1px solid var(--border-hairline);
+        border-radius: 999px;
+        padding: 5px 14px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+    }
+    .woday-eyebrow-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent-coral);
+    }
+    .woday-title {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 2.55rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+        color: var(--text-main);
+        margin-bottom: 8px;
+    }
+    .woday-subtitle {
+        font-size: 0.98rem;
+        color: var(--text-muted);
+        line-height: 1.55;
+    }
+
+    /* Bento Cards */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: var(--bg-card) !important;
+        border: 1px solid var(--border-hairline) !important;
+        border-radius: 22px !important;
+        padding: 18px !important;
+        box-shadow: 0 12px 32px -8px rgba(20, 20, 19, 0.05) !important;
+    }
+
+    .mac-card-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        margin-bottom: 14px;
+        border-bottom: 1px solid var(--border-hairline);
+    }
+    .mac-dots {
+        display: flex;
+        gap: 6px;
+    }
+    .mac-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    .mac-dot-r { background: #FF5F56; }
+    .mac-dot-y { background: #FFBD2E; }
+    .mac-dot-g { background: #27C93F; }
+    .mac-card-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.73rem;
+        font-weight: 600;
+        color: var(--text-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .section-step-title {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.02rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .step-num-badge {
+        background: var(--text-main);
+        color: #FFFFFF;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+
+    /* Topic Ranking Card */
+    .rank-card {
+        background: #FAF9F5;
+        border: 1.5px solid rgba(20, 20, 19, 0.08);
+        border-radius: 14px;
+        padding: 11px 14px;
+        margin-bottom: 6px;
+    }
+    .rank-card-active {
+        background: #FFFFFF;
+        border: 2px solid #141413;
+        box-shadow: 0 6px 18px -4px rgba(20, 20, 19, 0.10);
+    }
+    .rank-top-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+    .rank-number {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.74rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 6px;
+        background: #141413;
+        color: #FFFFFF;
+    }
+    .rank-number-top {
+        background: #FF5A36;
+        color: #FFFFFF;
+    }
+    .rank-cat-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #575653;
+        background: #EAE8E1;
+        padding: 2px 9px;
+        border-radius: 999px;
+    }
+    .rank-title {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #141413;
+        line-height: 1.3;
+        margin-bottom: 3px;
+    }
+    .rank-summary {
+        font-size: 0.77rem;
+        color: #575653;
+        line-height: 1.38;
+    }
+
+    /* Template Visual Preview Card */
+    .tpl-preview-card {
+        border-radius: 14px;
+        padding: 10px;
+        border: 2px solid rgba(20, 20, 19, 0.09);
+        background: #FAF9F5;
+        margin-bottom: 6px;
+    }
+    .tpl-preview-card-active {
+        border: 2.5px solid #141413;
+        background: #FFFFFF;
+        box-shadow: 0 8px 20px -4px rgba(20, 20, 19, 0.12);
+    }
+    .tpl-mini-sheet {
+        height: 92px;
+        border-radius: 9px;
+        padding: 9px 11px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.12);
+        margin-bottom: 8px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .tpl-mini-title {
+        font-family: 'Caveat', cursive;
+        font-size: 1.1rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .tpl-mini-hl {
+        display: inline-block;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 4px;
+        width: fit-content;
+    }
+    .tpl-mini-box {
+        font-size: 0.66rem;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 5px;
+        display: flex;
+        justify-content: space-between;
+    }
+    .tpl-meta-name {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 0.83rem;
+        font-weight: 700;
+        color: #141413;
+    }
+    .tpl-meta-badge {
+        font-size: 0.69rem;
+        color: #575653;
+        font-weight: 600;
+    }
+
+    /* Buttons */
+    .stButton > button[kind="primary"] {
+        background-color: #141413 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #141413 !important;
+        border-radius: 11px !important;
+        padding: 0.5rem 0.9rem !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 0.83rem !important;
+        box-shadow: 0 4px 12px rgba(20, 20, 19, 0.12) !important;
+    }
+    .stButton > button[kind="secondary"] {
+        background-color: #F3F2EE !important;
+        color: #141413 !important;
+        border: 1px solid rgba(20, 20, 19, 0.10) !important;
+        border-radius: 11px !important;
+        padding: 0.5rem 0.9rem !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-weight: 600 !important;
+        font-size: 0.83rem !important;
+    }
+    .stButton > button[kind="secondary"]:hover {
+        background-color: #EAE8E1 !important;
+        border-color: #141413 !important;
+    }
+</style>
+""",
     unsafe_allow_html=True,
 )
 
-# =====================================================================
-# 2-PANE BENTO WORKSPACE
-# =====================================================================
-left_pane, right_pane = st.columns([1.05, 2.25], gap="medium")
 
-with left_pane:
+def render_template_mini_preview(tpl_key: str, is_active: bool) -> str:
+    """Renders a miniature visual notebook preview card for the template selector."""
+    t = NOTE_TEMPLATES[tpl_key]
+    active_cls = "tpl-preview-card-active" if is_active else ""
+    status_pill = "● Selected" if is_active else "Preview"
+
+    return f"""
+    <div class="tpl-preview-card {active_cls}">
+        <div class="tpl-mini-sheet" style="background-color:{t['paper_bg']}; background-image:{t['line_css']}; background-size:18px 18px;">
+            <div class="tpl-mini-title" style="color:{t['title_color']};">
+                Page 01 • Core Architecture
+            </div>
+            <div class="tpl-mini-hl" style="background:{t['highlight_bg']}; color:{t['text_color']};">
+                ★ Key Exam Concept Highlight
+            </div>
+            <div class="tpl-mini-box" style="background:{t['box_bg']}; border:1.5px solid {t['box_border']}; color:{t['accent_color']};">
+                <span>⚡ 01 → 02 → 03 Flow</span>
+                <span>💡 Tip</span>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div class="tpl-meta-name">{t['name']}</div>
+                <div class="tpl-meta-badge">{t['badge']}</div>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:0.68rem; font-weight:700; color:{'#16A34A' if is_active else '#8A8884'};">
+                {status_pill}
+            </span>
+        </div>
+    </div>
+    """
+
+
+# =====================================================================
+# 3. Session State Initialization
+# =====================================================================
+env_api_key = os.getenv("GEMINI_API_KEY", "")
+if not env_api_key:
+    try:
+        env_api_key = st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        env_api_key = ""
+
+if "selected_subject" not in st.session_state:
+    st.session_state.selected_subject = "AI & Machine Learning"
+if "ranked_topics" not in st.session_state:
+    st.session_state.ranked_topics = get_default_ranked_topics("AI & Machine Learning")
+if "selected_rank_idx" not in st.session_state:
+    st.session_state.selected_rank_idx = 0
+if "selected_template" not in st.session_state:
+    st.session_state.selected_template = "classic_cream"
+if "selected_language" not in st.session_state:
+    st.session_state.selected_language = "Sinhala_Mix"
+if "selected_page_count" not in st.session_state:
+    st.session_state.selected_page_count = 5
+if "carousel_data" not in st.session_state:
+    st.session_state.carousel_data = None
+if "active_topic_title" not in st.session_state:
+    st.session_state.active_topic_title = ""
+
+# =====================================================================
+# 4. Top Woday-Styled Header
+# =====================================================================
+st.markdown(
+    """
+<div class="woday-nav">
+    <div class="woday-brand">
+        <div class="woday-logo-box">📓</div>
+        <span>NIWNOTES</span>
+    </div>
+    <div class="woday-nav-pills">
+        <span class="woday-pill">🎓 8 University Tracks</span>
+        <span class="woday-pill">📑 5 • 10 • 30 Pages</span>
+        <span class="woday-pill-active">⚡ Turbo Zero-Wait Studio</span>
+    </div>
+</div>
+
+<div class="woday-hero">
+    <div class="woday-eyebrow">
+        <span class="woday-eyebrow-dot"></span>
+        <span>All-in-One University Sketchnote & Social Learning Studio</span>
+    </div>
+    <div class="woday-title">Study Notes, Ranked & Visualized.</div>
+    <div class="woday-subtitle">
+        Pick a top-ranked university topic, preview your notebook aesthetic, choose <strong>5, 10, or 30 pages</strong>,
+        and generate handwritten carousels with matching <strong>Kuppiya Sinhala + English</strong> or <strong>English</strong> captions in seconds.
+    </div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
+
+if not env_api_key:
+    with st.expander("🔑 Configure Gemini API Key", expanded=True):
+        api_key = st.text_input(
+            "Enter your Google Gemini API Key (Free at aistudio.google.com)",
+            type="password",
+        )
+else:
+    api_key = env_api_key
+
+# =====================================================================
+# 5. Two-Column Woday Bento Control Workspace
+# =====================================================================
+left_col, right_col = st.columns([1.12, 1.0], gap="large")
+
+with left_col:
     with st.container(border=True):
         st.markdown(
             """
-            <div class="macos-window-bar">
-                <div class="traffic-lights">
-                    <span class="tl-dot tl-red"></span>
-                    <span class="tl-dot tl-yellow"></span>
-                    <span class="tl-dot tl-green"></span>
-                </div>
-                <span class="window-label">composer.niwnotes</span>
+        <div class="mac-card-bar">
+            <div class="mac-dots">
+                <div class="mac-dot mac-dot-r"></div>
+                <div class="mac-dot mac-dot-y"></div>
+                <div class="mac-dot mac-dot-g"></div>
             </div>
-            <div>
-                <span class="card-step-pill">Step 01 · Academic Track</span>
-                <div class="card-title">Subject &amp; Topic Discovery</div>
-            </div>
-            """,
+            <div class="mac-card-label">Curriculum & Ranked Topics (#01 – #05)</div>
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            '<div class="section-step-title"><span class="step-num-badge">01</span> Select University Subject Track</div>',
             unsafe_allow_html=True,
         )
 
         subject_list = list(UNIVERSITY_SUBJECTS.keys())
-        selected_subject = st.selectbox(
-            "University Subject Discipline",
-            options=subject_list,
-            index=0,
-        )
-
-        input_mode = st.selectbox(
-            "Topic Source",
-            options=[
-                "Type Lecture / Exam Topic Manually",
-                "Discover Trending Topics for this Subject",
-            ],
-            index=0,
-        )
-
-        if input_mode == "Discover Trending Topics for this Subject":
-            if st.button(
-                f"Find Trending {selected_subject.split('&')[0].strip()} Topics",
-                use_container_width=True,
-            ):
-                if not default_api_key:
-                    st.error("Please enter your Gemini API Key below first.")
-                else:
-                    with st.spinner(f"Scanning live feeds for {selected_subject}..."):
-                        st.session_state.viral_topics = cached_discover_topics(
-                            default_api_key, selected_subject
-                        )
-
-            if st.session_state.viral_topics:
-                topic_titles = [t.topic_title for t in st.session_state.viral_topics]
-                final_topic = st.selectbox(
-                    "Select a Trending Topic", options=topic_titles
-                )
-                matched = next(
-                    (
-                        t
-                        for t in st.session_state.viral_topics
-                        if t.topic_title == final_topic
-                    ),
-                    None,
-                )
-                if matched:
-                    st.caption(f"Why it matters: {matched.why_it_is_viral}")
-            else:
-                final_topic = st.text_input(
-                    "Or Enter Topic Directly",
-                    value="What is RAG (Retrieval-Augmented Generation) in AI?",
-                )
-        else:
-            default_examples = {
-                "AI & Machine Learning": "What is RAG (Retrieval-Augmented Generation) in AI?",
-                "Software Engineering & Full-Stack": "Microservices vs Monolithic Architecture Explained",
-                "Cybersecurity & Ethical Hacking": "How Zero-Trust Security Architecture Works",
-                "Data Science & Big Data Analytics": "Apache Kafka Real-Time Data Streaming Explained",
-                "Cloud Computing & DevOps": "How Kubernetes Pod Scheduling & Auto-Scaling Works",
-                "Computer Networks & Distributed Systems": "CAP Theorem & Consensus in Distributed Systems",
-                "IoT, Robotics & Embedded Systems": "MQTT Protocol vs HTTP in IoT Edge Devices",
-                "UI/UX & Product Engineering": "Design Tokens & Atomic Design System Architecture",
-            }
-            final_topic = st.text_input(
-                "Lecture Concept or Technical Topic",
-                value=default_examples.get(selected_subject, "What is RAG in AI?"),
+        sub_col1, sub_col2 = st.columns([3.2, 1.2])
+        with sub_col1:
+            chosen_subject = st.selectbox(
+                "Subject Category",
+                options=subject_list,
+                index=subject_list.index(st.session_state.selected_subject),
+                format_func=lambda s: f"{UNIVERSITY_SUBJECTS[s]['icon']}  {s}",
+                label_visibility="collapsed",
             )
-
-        st.markdown("<hr/>", unsafe_allow_html=True)
-
-        st.markdown(
-            """
-            <div>
-                <span class="card-step-pill">Step 02 · Note Aesthetics</span>
-                <div class="card-title">Template &amp; Language</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        template_keys = list(NOTE_TEMPLATES.keys())
-        selected_template = st.selectbox(
-            "Notebook Paper Template",
-            options=template_keys,
-            format_func=lambda k: f"{NOTE_TEMPLATES[k]['name']} — {NOTE_TEMPLATES[k]['badge']}",
-            index=0,
-        )
-
-        t_meta = NOTE_TEMPLATES[selected_template]
-        st.markdown(
-            f"""
-            <div class="template-card-bar">
-                <span>{t_meta['name']}</span>
-                <div class="swatch-row">
-                    <span class="swatch-chip" style="background:{t_meta['paper_bg']};"></span>
-                    <span class="swatch-chip" style="background:{t_meta['ink_blue']};"></span>
-                    <span class="swatch-chip" style="background:{t_meta['ink_red']};"></span>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        col_lang, col_author = st.columns([1.35, 1.0], gap="small")
-        with col_lang:
-            lang_choice = st.selectbox(
-                "Explanation Language",
-                options=[
-                    "Sinhala + English Tech Terms",
-                    "100% English (Global)",
-                ],
-                index=0,
-            )
-            selected_language = (
-                "Sinhala_Mix" if "Sinhala" in lang_choice else "English"
-            )
-        with col_author:
-            author_handle = st.text_input("Author Handle", value="@NIWNOTES")
-
-        if not default_api_key:
-            api_key_input = st.text_input("Gemini API Key", type="password")
-        else:
-            api_key_input = default_api_key
-
-        generate_btn = st.button(
-            "Create 5-Page Study Carousel",
-            type="primary",
-            use_container_width=True,
-        )
-
-        if generate_btn:
-            if not api_key_input:
-                st.error("Missing GEMINI_API_KEY.")
-            elif not final_topic.strip():
-                st.warning("Please enter a study topic.")
-            else:
-                t_start = time.perf_counter()
-                os.environ["GEMINI_API_KEY"] = api_key_input
-                safe_folder = "".join(
-                    c if c.isalnum() else "_" for c in final_topic
-                )[:35].strip("_")
-                out_dir = os.path.join("output", safe_folder)
-
-                with st.status(
-                    "Creating your 5-page NIWNOTES study post...", expanded=True
-                ) as status:
-                    st.write(
-                        f"1/2 Writing {selected_subject} study guide..."
-                    )
-                    guide = generate_5_page_study_guide(
-                        topic=final_topic,
-                        language=selected_language,
-                        api_key=api_key_input,
-                        subject_category=selected_subject,
-                    )
-                    st.write(
-                        f"2/2 Rendering 5 slides in parallel ({t_meta['name']})..."
-                    )
-                    img_paths = render_all_pages(
-                        guide=guide,
-                        author=author_handle,
-                        output_dir=out_dir,
-                        template_id=selected_template,
-                    )
-                    caption_file = os.path.join(out_dir, "caption.txt")
-                    with open(caption_file, "w", encoding="utf-8") as f:
-                        f.write(guide.social_caption)
-
-                    elapsed = time.perf_counter() - t_start
-                    st.session_state.last_render_sec = elapsed
-                    st.session_state.active_topic = guide.topic_name
-                    st.session_state.image_paths = img_paths
-                    st.session_state.social_caption = guide.social_caption
-                    status.update(
-                        label=f"Ready in {elapsed:.1f}s!", state="complete"
-                    )
+            if chosen_subject != st.session_state.selected_subject:
+                st.session_state.selected_subject = chosen_subject
+                st.session_state.ranked_topics = get_default_ranked_topics(chosen_subject)
+                st.session_state.selected_rank_idx = 0
                 st.rerun()
 
-# =====================================================================
-# RIGHT PANE: macOS PREVIEW CANVAS & EXPORT
-# =====================================================================
-with right_pane:
+        with sub_col2:
+            if st.button("🔄 Live Refresh", use_container_width=True):
+                if api_key:
+                    with st.spinner("Scanning live trends..."):
+                        models = get_working_models(api_key)
+                        res = discover_viral_topics(models, st.session_state.selected_subject, api_key)
+                        st.session_state.ranked_topics = res.topics
+                        st.session_state.selected_rank_idx = 0
+                        st.rerun()
+
+        st.markdown(
+            '<div class="section-step-title" style="margin-top:8px;"><span class="step-num-badge">02</span> Top 5 Ranked Topics (Click to Select)</div>',
+            unsafe_allow_html=True,
+        )
+
+        for idx, t_item in enumerate(st.session_state.ranked_topics[:5]):
+            is_selected = idx == st.session_state.selected_rank_idx
+            card_cls = "rank-card rank-card-active" if is_selected else "rank-card"
+            num_cls = "rank-number rank-number-top" if idx == 0 else "rank-number"
+
+            r_col_card, r_col_btn = st.columns([4.3, 1.0])
+            with r_col_card:
+                st.markdown(
+                    f"""
+                <div class="{card_cls}">
+                    <div class="rank-top-row">
+                        <span class="{num_cls}">RANK #{idx + 1:02d}</span>
+                        <span class="rank-cat-badge">{t_item.category}</span>
+                    </div>
+                    <div class="rank-title">{t_item.title}</div>
+                    <div class="rank-summary">{t_item.summary}</div>
+                </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+            with r_col_btn:
+                st.write("")
+                btn_label = "✓ Active" if is_selected else f"Pick #{idx + 1}"
+                if st.button(
+                    btn_label,
+                    key=f"pick_rank_{idx}",
+                    type="primary" if is_selected else "secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_rank_idx = idx
+                    st.rerun()
+
+        custom_topic = st.text_input(
+            "✏️ Or Type Any Custom University Lecture Topic (Optional Override)",
+            placeholder="e.g., Dijkstra's Shortest Path, Deadlock Prevention in OS, Transformer Attention...",
+        )
+
+with right_col:
     with st.container(border=True):
         st.markdown(
             """
-            <div class="macos-window-bar">
-                <div class="traffic-lights">
-                    <span class="tl-dot tl-red"></span>
-                    <span class="tl-dot tl-yellow"></span>
-                    <span class="tl-dot tl-green"></span>
-                </div>
-                <span class="window-label">preview — 1000×1250px (4:5 Social Portrait)</span>
+        <div class="mac-card-bar">
+            <div class="mac-dots">
+                <div class="mac-dot mac-dot-r"></div>
+                <div class="mac-dot mac-dot-y"></div>
+                <div class="mac-dot mac-dot-g"></div>
             </div>
-            """,
+            <div class="mac-card-label">Visual Style, Language & Page Count</div>
+        </div>
+        """,
             unsafe_allow_html=True,
         )
 
-        if st.session_state.image_paths:
-            img_paths = st.session_state.image_paths
-            caption_text = st.session_state.social_caption
-            topic_title = st.session_state.active_topic
+        st.markdown(
+            '<div class="section-step-title"><span class="step-num-badge">03</span> Choose Notebook Template (Visual Sample)</div>',
+            unsafe_allow_html=True,
+        )
 
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-                for p in img_paths:
-                    if os.path.exists(p):
-                        zf.write(p, arcname=os.path.basename(p))
-                if caption_text:
-                    zf.writestr("caption.txt", caption_text)
-            zip_buffer.seek(0)
+        tpl_keys = list(NOTE_TEMPLATES.keys())
+        tpl_grid_1 = st.columns(2)
+        tpl_grid_2 = st.columns(2)
+        tpl_cols = [tpl_grid_1[0], tpl_grid_1[1], tpl_grid_2[0], tpl_grid_2[1]]
 
-            top_l, top_r = st.columns([2.15, 0.95], vertical_alignment="center")
-            with top_l:
-                st.markdown(
-                    f"""
-                    <div>
-                        <span class="card-step-pill">Active Study Deck · 5 Slides</span>
-                        <div class="card-title" style="font-size:1.4rem;">{topic_title}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            with top_r:
-                st.download_button(
-                    label="Download Bundle (.ZIP)",
-                    data=zip_buffer,
-                    file_name="niwnotes_study_carousel.zip",
-                    mime="application/zip",
-                    type="primary",
+        for idx, t_key in enumerate(tpl_keys):
+            with tpl_cols[idx]:
+                is_tpl_active = st.session_state.selected_template == t_key
+                st.markdown(render_template_mini_preview(t_key, is_tpl_active), unsafe_allow_html=True)
+                btn_lbl = f"✓ {NOTE_TEMPLATES[t_key]['name'][:16]}" if is_tpl_active else "Use Template"
+                if st.button(
+                    btn_lbl,
+                    key=f"tpl_btn_{t_key}",
+                    type="primary" if is_tpl_active else "secondary",
                     use_container_width=True,
-                )
+                ):
+                    st.session_state.selected_template = t_key
+                    st.rerun()
 
-            tab_grid, tab_inspect, tab_copy = st.tabs(
-                [
-                    "5-Slide Overview",
-                    "Large Slide Reader",
-                    "Social Post Copy",
-                ]
-            )
+        st.markdown("<hr style='margin: 12px 0; border-color: rgba(20,20,19,0.08);'>", unsafe_allow_html=True)
 
-            with tab_grid:
-                cols = st.columns(5, gap="small")
-                for idx, img_path in enumerate(img_paths):
-                    with cols[idx]:
-                        if os.path.exists(img_path):
-                            st.image(img_path, use_container_width=True)
-                            with open(img_path, "rb") as img_file:
-                                st.download_button(
-                                    label=f"Slide 0{idx+1}",
-                                    data=img_file,
-                                    file_name=f"niwnotes_slide_{idx+1}.png",
-                                    mime="image/png",
-                                    key=f"dl_slide_{idx+1}",
-                                    use_container_width=True,
-                                )
+        st.markdown(
+            '<div class="section-step-title"><span class="step-num-badge">04</span> Note & Social Caption Language</div>',
+            unsafe_allow_html=True,
+        )
 
-            with tab_inspect:
-                slide_num = st.selectbox(
-                    "Choose Slide to Read",
-                    options=[1, 2, 3, 4, 5],
-                    format_func=lambda x: f"Slide 0{x} of 05",
-                )
-                selected_img = img_paths[slide_num - 1]
-                if os.path.exists(selected_img):
-                    _, center_col, _ = st.columns([0.35, 2.3, 0.35])
-                    with center_col:
-                        st.image(selected_img, use_container_width=True)
+        lang_col1, lang_col2 = st.columns(2)
+        with lang_col1:
+            is_sinhala = st.session_state.selected_language == "Sinhala_Mix"
+            if st.button(
+                "🇱🇰 Sinhala + English (Kuppiya Mix)",
+                type="primary" if is_sinhala else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state.selected_language = "Sinhala_Mix"
+                st.rerun()
+        with lang_col2:
+            is_english = st.session_state.selected_language == "English"
+            if st.button(
+                "🇬🇧 100% Academic English",
+                type="primary" if is_english else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state.selected_language = "English"
+                st.rerun()
 
-            with tab_copy:
-                st.markdown(
-                    '<span class="card-step-pill">LinkedIn &amp; Facebook Caption (Click top-right icon to copy)</span>',
-                    unsafe_allow_html=True,
-                )
-                st.code(caption_text, language="markdown")
-        else:
-            st.markdown(
-                """
-                <div style="padding: 4.5rem 1.5rem; text-align: center;">
-                    <div style="width:48px;height:48px;border-radius:14px;background:#F3F2EE;color:#141413;
-                                display:inline-flex;align-items:center;justify-content:center;
-                                font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.3rem;margin-bottom:0.9rem;">
-                        N
-                    </div>
-                    <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1.25rem;color:#141413;margin-bottom:0.35rem;">
-                        No study deck in workspace yet
-                    </div>
-                    <div style="font-size: 0.9rem; color: #575653; max-width: 420px; margin: 0 auto;">
-                        Select your university subject and notebook style on the left, then click <b>Create 5-Page Study Carousel</b>.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        st.markdown("<hr style='margin: 12px 0; border-color: rgba(20,20,19,0.08);'>", unsafe_allow_html=True)
+
+        st.markdown(
+            '<div class="section-step-title"><span class="step-num-badge">05</span> Study Deck Length (Number of Pages)</div>',
+            unsafe_allow_html=True,
+        )
+
+        pg_col1, pg_col2, pg_col3 = st.columns(3)
+        for col_obj, pg_val, pg_desc in [
+            (pg_col1, 5, "📄 5 Pages (Quick)"),
+            (pg_col2, 10, "📑 10 Pages (Deep)"),
+            (pg_col3, 30, "📚 30 Pages (Full Book)"),
+        ]:
+            with col_obj:
+                is_pg_active = st.session_state.selected_page_count == pg_val
+                if st.button(
+                    pg_desc,
+                    key=f"pg_btn_{pg_val}",
+                    type="primary" if is_pg_active else "secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_page_count = pg_val
+                    st.rerun()
+
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+        active_ranked_topic = st.session_state.ranked_topics[st.session_state.selected_rank_idx].title
+        final_topic = custom_topic.strip() if custom_topic.strip() else active_ranked_topic
+
+        if st.button(
+            f"⚡ Generate {st.session_state.selected_page_count}-Page Study Carousel Now",
+            type="primary",
+            use_container_width=True,
+        ):
+            if not api_key:
+                st.error("Please configure your Gemini API key first.")
+            else:
+                with st.spinner(
+                    f"⚡ Turbo Engine: Writing {st.session_state.selected_page_count}-page study guide on '{final_topic[:45]}'..."
+                ):
+                    try:
+                        carousel_data = generate_5_page_study_guide(
+                            topic=final_topic,
+                            language=st.session_state.selected_language,
+                            api_key=api_key,
+                            subject_category=st.session_state.selected_subject,
+                            num_pages=st.session_state.selected_page_count,
+                        )
+                        st.session_state.carousel_data = carousel_data
+                        st.session_state.active_topic_title = final_topic
+                    except Exception as e:
+                        st.error(f"Error during generation: {e}")
+
+# =====================================================================
+# 6. Zero-Wait Interactive Sketchnote & Social Post Studio
+# =====================================================================
+if st.session_state.carousel_data:
+    st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+    studio_html = build_interactive_studio_html(
+        carousel_data=st.session_state.carousel_data,
+        topic=st.session_state.active_topic_title,
+        template_id=st.session_state.selected_template,
+        subject_category=st.session_state.selected_subject,
+        language=st.session_state.selected_language,
+    )
+    components.html(studio_html, height=1020, scrolling=True)

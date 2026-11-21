@@ -1,641 +1,1263 @@
-from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
 import os
-import re
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types
-from html2image import Html2Image
+import json
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Any
 from pydantic import BaseModel, Field
+from google.genai import types
+from dotenv import load_dotenv
+from trend_agent import get_working_models, get_genai_client
 
 load_dotenv()
 
 # =====================================================================
-# 1. VISUAL TEMPLATES REGISTRY (4 DISTINCT STUDENT NOTE STYLES)
+# 1. Multi-Template Theme Definitions
 # =====================================================================
-NOTE_TEMPLATES = {
+NOTE_TEMPLATES: Dict[str, Dict[str, Any]] = {
     "classic_cream": {
         "name": "Classic Cream Notebook",
-        "badge": "Warm Dot-Grid + Yellow Marker",
-        "paper_bg": "#FAF7F0",
-        "dot_color": "#B8C4CE",
-        "grid_css": "background-image: radial-gradient(#B8C4CE 1.4px, transparent 1.4px); background-size: 26px 26px;",
-        "margin_line": "rgba(217, 48, 37, 0.32)",
-        "ink_main": "#1A2233",
-        "ink_title": "#0F172A",
-        "ink_blue": "#0B57D0",
-        "ink_red": "#D93025",
-        "ink_green": "#137333",
-        "mark_fill": "rgba(255, 226, 70, 0.78)",
-        "box_stroke": "%23D93025",
-        " box_fill": "rgba(217, 48, 37, 0.04)",
-        "underline_stroke": "%230B57D0",
-        "card_bg": "rgba(255, 255, 255, 0.85)",
-        "card_border": "#1E293B",
-        "step_bg": "#FFFDF7",
-        "takeaway_bg": "#FEF9C3",
-        "takeaway_border": "#CA8A04",
-        "badge_bg": "#1E293B",
-        "badge_text": "#FFFFFF",
+        "badge": "Warm Ruled Paper",
+        "description": "Cream ruled notebook with spiral holes, red margin line & marker highlights.",
+        "paper_bg": "#FDFBF7",
+        "line_css": "repeating-linear-gradient(transparent, transparent 37px, #E2E8F0 37px, #E2E8F0 38px)",
+        "bg_size": "100% 38px",
+        "margin_line": "3px double #FCA5A5",
+        "text_color": "#1E293B",
+        "sub_text_color": "#475569",
+        "title_color": "#0F172A",
+        "accent_color": "#2563EB",
+        "secondary_accent": "#EA580C",
+        "highlight_bg": "rgba(253, 224, 71, 0.60)",
+        "box_bg": "#FFFFFF",
+        "box_border": "#1E293B",
+        "step_bg": "#F8FAFC",
+        "pro_tip_bg": "#FEF9C3",
+        "pro_tip_border": "#EAB308",
+        "pro_tip_text": "#713F12",
+        "show_holes": True,
+        "cornell_layout": False,
     },
     "dark_neon": {
-        "name": "Obsidian Neon Darkboard",
-        "badge": "iPad Dark Slate + Emerald Glow",
-        "paper_bg": "#0B101B",
-        "dot_color": "#1E293B",
-        "grid_css": "background-image: radial-gradient(#26334D 1.4px, transparent 1.4px); background-size: 26px 26px;",
-        "margin_line": "rgba(0, 255, 136, 0.22)",
-        "ink_main": "#E2E8F0",
-        "ink_title": "#FFFFFF",
-        "ink_blue": "#38BDF8",
-        "ink_red": "#00FF88",
-        "ink_green": "#A3E635",
-        "mark_fill": "rgba(0, 255, 136, 0.25)",
-        "box_stroke": "%2338BDF8",
-        "box_fill": "rgba(56, 189, 248, 0.08)",
-        "underline_stroke": "%2300FF88",
-        "card_bg": "rgba(15, 23, 42, 0.88)",
-        "card_border": "#334155",
-        "step_bg": "#111C2D",
-        "takeaway_bg": "rgba(0, 255, 136, 0.10)",
-        "takeaway_border": "#00FF88",
-        "badge_bg": "#00FF88",
-        "badge_text": "#03120A",
+        "name": "Dark Mode iPad GoodNotes",
+        "badge": "Dark Dot-Grid",
+        "description": "Deep slate iPad canvas with subtle dot-grid and glowing cyan & violet ink.",
+        "paper_bg": "#0F172A",
+        "line_css": "radial-gradient(#334155 1.5px, transparent 1.5px)",
+        "bg_size": "28px 28px",
+        "margin_line": "2px solid #334155",
+        "text_color": "#F1F5F9",
+        "sub_text_color": "#94A3B8",
+        "title_color": "#38BDF8",
+        "accent_color": "#38BDF8",
+        "secondary_accent": "#C084FC",
+        "highlight_bg": "rgba(56, 189, 248, 0.25)",
+        "box_bg": "#1E293B",
+        "box_border": "#38BDF8",
+        "step_bg": "#0F172A",
+        "pro_tip_bg": "#1E1B4B",
+        "pro_tip_border": "#A855F7",
+        "pro_tip_text": "#E9D5FF",
+        "show_holes": False,
+        "cornell_layout": False,
     },
     "blueprint_grid": {
-        "name": "Engineering Blueprint Grid",
-        "badge": "Technical Graph + Navy Ink",
-        "paper_bg": "#F0F6FC",
-        "dot_color": "#BFD4EA",
-        "grid_css": (
-            "background-image: linear-gradient(rgba(14, 116, 144, 0.10) 1px, transparent 1px), "
-            "linear-gradient(90deg, rgba(14, 116, 144, 0.10) 1px, transparent 1px); "
-            "background-size: 26px 26px;"
+        "name": "Engineering Math Grid",
+        "badge": "5mm Square Grid",
+        "description": "Crisp white engineering graph paper with cobalt blue ink and teal accents.",
+        "paper_bg": "#F8FAFC",
+        "line_css": (
+            "linear-gradient(to right, #E2E8F0 1px, transparent 1px), "
+            "linear-gradient(to bottom, #E2E8F0 1px, transparent 1px)"
         ),
-        "margin_line": "rgba(2, 132, 199, 0.30)",
-        "ink_main": "#0F172A",
-        "ink_title": "#0369A1",
-        "ink_blue": "#0284C7",
-        "ink_red": "#EA580C",
-        "ink_green": "#0D9488",
-        "mark_fill": "rgba(125, 211, 252, 0.55)",
-        "box_stroke": "%23EA580C",
-        "box_fill": "rgba(234, 88, 12, 0.05)",
-        "underline_stroke": "%230284C7",
-        "card_bg": "rgba(255, 255, 255, 0.90)",
-        "card_border": "#0369A1",
-        "step_bg": "#FFFFFF",
-        "takeaway_bg": "#E0F2FE",
-        "takeaway_border": "#0284C7",
-        "badge_bg": "#0369A1",
-        "badge_text": "#FFFFFF",
+        "bg_size": "28px 28px",
+        "margin_line": "2px solid #93C5FD",
+        "text_color": "#0F172A",
+        "sub_text_color": "#475569",
+        "title_color": "#1D4ED8",
+        "accent_color": "#0284C7",
+        "secondary_accent": "#0D9488",
+        "highlight_bg": "rgba(125, 211, 252, 0.45)",
+        "box_bg": "#FFFFFF",
+        "box_border": "#1D4ED8",
+        "step_bg": "#F0F9FF",
+        "pro_tip_bg": "#CCFBF1",
+        "pro_tip_border": "#0D9488",
+        "pro_tip_text": "#134E4A",
+        "show_holes": False,
+        "cornell_layout": False,
     },
     "cornell_academic": {
-        "name": "Cornell Exam Revision Sheet",
-        "badge": "Academic Ivory + Violet Accents",
-        "paper_bg": "#FDFCF7",
-        "dot_color": "#D6D3C9",
-        "grid_css": "background-image: linear-gradient(to bottom, transparent 29px, rgba(148, 163, 184, 0.22) 30px); background-size: 100% 30px;",
-        "margin_line": "rgba(124, 58, 237, 0.30)",
-        "ink_main": "#1E1B4B",
-        "ink_title": "#311042",
-        "ink_blue": "#6D28D9",
-        "ink_red": "#BE123C",
-        "ink_green": "#047857",
-        "mark_fill": "rgba(233, 213, 255, 0.85)",
-        "box_stroke": "%23BE123C",
-        "box_fill": "rgba(190, 18, 60, 0.04)",
-        "underline_stroke": "%236D28D9",
-        "card_bg": "rgba(255, 255, 255, 0.92)",
-        "card_border": "#4C1D95",
-        "step_bg": "#FAF5FF",
-        "takeaway_bg": "#F3E8FF",
-        "takeaway_border": "#7C3AED",
-        "badge_bg": "#4C1D95",
-        "badge_text": "#FFFFFF",
+        "name": "University Cornell System",
+        "badge": "Exam Revision Sheet",
+        "description": "Structured academic paper with top header bar, emerald ink, and summary block.",
+        "paper_bg": "#FFFDF9",
+        "line_css": "repeating-linear-gradient(transparent, transparent 37px, #E7E5E4 37px, #E7E5E4 38px)",
+        "bg_size": "100% 38px",
+        "margin_line": "3px solid #10B981",
+        "text_color": "#1C1917",
+        "sub_text_color": "#57534E",
+        "title_color": "#065F46",
+        "accent_color": "#059669",
+        "secondary_accent": "#D97706",
+        "highlight_bg": "rgba(110, 231, 183, 0.45)",
+        "box_bg": "#FFFFFF",
+        "box_border": "#065F46",
+        "step_bg": "#ECFDF5",
+        "pro_tip_bg": "#FEF3C7",
+        "pro_tip_border": "#D97706",
+        "pro_tip_text": "#78350F",
+        "show_holes": False,
+        "cornell_layout": True,
     },
 }
 
 
 # =====================================================================
-# 2. PYDANTIC SCHEMAS FOR STRICT 5-PAGE STUDY GUIDE
+# 2. Structured Output Schemas (Optimized for Speed)
 # =====================================================================
 class DiagramStep(BaseModel):
-    step_num: str = Field(description="Step number e.g. '01', '02', '03', '04'")
-    title: str = Field(description="Short 2-3 word title in English")
-    detail: str = Field(description="Brief 4-6 word explanation")
+    step_num: str = Field(description="Step number like '01', '02', '03'")
+    label: str = Field(description="Short title of this step (2-4 words in English)")
+    detail: str = Field(description="Concise 1-line explanation of what happens in this step")
 
 
 class NotePage(BaseModel):
-    page_number: int = Field(description="Page number from 1 to 5")
-    page_title: str = Field(description="Clear English heading for this slide")
-    subtitle_tag: str = Field(
-        description="Short category badge e.g. 'CONCEPT 01 // MENTAL MODEL'"
+    page_number: int = Field(description="Page number")
+    title: str = Field(description="Big handwritten header title for the page")
+    subtitle: str = Field(description="Short 1-line subtitle explaining the core focus")
+    key_points: List[str] = Field(
+        description="3 or 4 bullet points. Keep each bullet concise (max 18 words) and wrap 1-2 key terms in <hl>tags</hl>."
     )
-    intro_definition: str = Field(
-        description="2-3 sentences explaining the core idea clearly. Wrap 1-2 key terms in <mark>...</mark> or <b>...</b>."
+    diagram_title: str = Field(description="Title of the visual workflow diagram box on this page")
+    diagram_steps: List[DiagramStep] = Field(
+        description="3 or 4 sequential steps for the visual architecture/flowchart diagram"
     )
-    bullet_points: list[str] = Field(
-        description="Exactly 3 detailed, high-value study bullet points. Wrap key phrases in <mark>, <b>, or <u>.",
-        min_length=3,
-        max_length=3,
+    pro_tip: str = Field(description="A short exam tip, memory trick, or real-world takeaway for the sticky note")
+    footer_tag: str = Field(description="Short category tag for the bottom right")
+
+
+class BatchSlideDeckWithCaption(BaseModel):
+    pages: List[NotePage] = Field(description="Exactly 5 sequential pages for this study module")
+    linkedin_caption: str = Field(
+        description="Engaging LinkedIn/Facebook study post caption in the requested language"
     )
-    diagram_title: str = Field(description="Title for the 4-step visual architecture flow")
-    diagram_steps: list[DiagramStep] = Field(
-        description="Exactly 4 sequential steps for the visual flowchart",
-        min_length=4,
-        max_length=4,
-    )
-    key_takeaway: str = Field(
-        description="1 memorable exam/interview takeaway or analogy sentence."
-    )
+    hashtags: List[str] = Field(description="5-8 relevant university and tech hashtags")
+
+
+class BatchSlideDeckOnly(BaseModel):
+    pages: List[NotePage] = Field(description="Exactly 5 sequential pages for this study module")
 
 
 class StudyCarouselResponse(BaseModel):
-    topic_name: str = Field(description="Clean English title of the topic")
-    pages: list[NotePage] = Field(
-        description="Exactly 5 sequential study pages", min_length=5, max_length=5
-    )
-    social_caption: str = Field(
-        description="Engaging human-written social media post caption with hook, summary, and hashtags."
-    )
+    pages: List[NotePage] = Field(description="All sequential pages for the study carousel")
+    linkedin_caption: str = Field(description="Engaging LinkedIn/Facebook study post caption")
+    hashtags: List[str] = Field(description="5-8 relevant university and tech hashtags")
 
 
 # =====================================================================
-# 3. CACHED MODEL DISCOVERY (FAST FLASH-LITE PRIORITY)
+# 3. Progressive Curriculum Outlines for 5, 10, and 30 Pages
 # =====================================================================
-@lru_cache(maxsize=4)
-def get_working_models(api_key: str) -> list[str]:
-    """Discovers active Gemini 3.x Flash models once and caches the result for instant reuse."""
-    client = genai.Client(api_key=api_key)
-    excluded = (
-        "2.5",
-        "2.0",
-        "1.5",
-        "1.0",
-        "image",
-        "vision",
-        "embedding",
-        "tts",
-        "audio",
-        "aqa",
-        "robotics",
-        "banana",
-    )
-    discovered = []
-    try:
-        for m in client.models.list():
-            name = m.name.replace("models/", "")
-            if "gemini" in name.lower() and not any(x in name.lower() for x in excluded):
-                discovered.append(name)
-    except Exception:
-        pass
+MODULE_OUTLINES = [
+    {
+        "module_name": "Module 1: Core Foundations & Architecture",
+        "slides": [
+            "Slide 1: Hook, Core Definition & Why This Topic Matters in Exams & Industry",
+            "Slide 2: Fundamental Concepts, Key Terminology & Underlying Theory",
+            "Slide 3: Step-by-Step Internal Architecture & Core Data/Execution Flow",
+            "Slide 4: Practical Implementation Example & Real-World System Use Case",
+            "Slide 5: Foundation Summary, Best Practices & Key Exam Takeaways",
+        ],
+    },
+    {
+        "module_name": "Module 2: Deep Internals, Algorithms & Optimization",
+        "slides": [
+            "Slide 6: Mathematical / Algorithmic Mechanics & Internal State Management",
+            "Slide 7: Memory, Latency & Performance Optimization Techniques",
+            "Slide 8: Edge Cases, Bottlenecks & Failure Modes",
+            "Slide 9: Side-by-Side Comparison with Alternative Approaches & Trade-offs",
+            "Slide 10: Production Engineering Patterns & Advanced Exam Questions",
+        ],
+    },
+    {
+        "module_name": "Module 3: System Design, Scaling & High Availability",
+        "slides": [
+            "Slide 11: End-to-End Distributed System Design & Component Topology",
+            "Slide 12: Horizontal Scaling, Load Balancing & Caching Strategies",
+            "Slide 13: Concurrency, Synchronization & Fault Tolerance Mechanisms",
+            "Slide 14: Monitoring, Observability, Metrics & Debugging Workflows",
+            "Slide 15: System Design Interview & Viva Examination Checklist",
+        ],
+    },
+    {
+        "module_name": "Module 4: Security, Reliability & Governance",
+        "slides": [
+            "Slide 16: Threat Model, Attack Surface & Common Vulnerabilities",
+            "Slide 17: Defensive Architecture, Encryption & Access Control Patterns",
+            "Slide 18: Automated Testing, Verification & Quality Assurance Pipelines",
+            "Slide 19: Disaster Recovery, Backups & High-Availability Failover",
+            "Slide 20: Security & Reliability Hardening Cheat Sheet",
+        ],
+    },
+    {
+        "module_name": "Module 5: Case Studies, Hands-On Patterns & Debugging",
+        "slides": [
+            "Slide 21: Industry Case Study #1 — How Top Tech Teams Implement This",
+            "Slide 22: Industry Case Study #2 — Scaling Challenges & Lessons Learned",
+            "Slide 23: Clean Implementation Blueprint & Design Pattern Breakdown",
+            "Slide 24: Common Anti-Patterns, Bugs & How to Troubleshoot Them Fast",
+            "Slide 25: Practical Lab / Project Implementation Roadmap for Students",
+        ],
+    },
+    {
+        "module_name": "Module 6: Master Revision, Viva Prep & Future Trends",
+        "slides": [
+            "Slide 26: Next-Generation Research Trends & Future Evolution (2026+)",
+            "Slide 27: Top 5 University Exam & Technical Interview Questions Answered",
+            "Slide 28: Rapid-Fire Formula / Concept Comparison Cheat Sheet",
+            "Slide 29: Mental Models & Memory Anchors for Instant Recall",
+            "Slide 30: Ultimate Master Summary & Career Action Plan",
+        ],
+    },
+]
 
-    # Prioritize fastest low-latency 3.x Flash models first for maximum speed
-    priority_order = [
-        "gemini-3.5-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-3.1-flash-lite",
-        "gemini-3.6-flash",
-        "gemini-3.7-flash",
-        "gemini-3.8-flash",
-    ]
-    ordered = [m for m in priority_order if m in discovered]
-    for m in discovered:
-        if m not in ordered:
-            ordered.append(m)
 
-    return ordered if ordered else priority_order[:4]
+def _build_language_instructions(language: str, include_caption: bool = True) -> str:
+    """Builds natural language instructions for both the note slides and the social caption."""
+    if language == "Sinhala_Mix":
+        caption_rule = (
+            "- **SOCIAL CAPTION LANGUAGE (MUST MATCH)**: Write `linkedin_caption` in the EXACT SAME natural Sri Lankan university 'Kuppiya' Sinhala Unicode + English technical mix so students can post it directly on LinkedIn or Facebook!"
+            if include_caption
+            else ""
+        )
+        return f"""
+        LANGUAGE STYLE: NATURAL SRI LANKAN UNIVERSITY "KUPPIYA" SINHALA + ENGLISH TECH MIX:
+        - Write explanations in natural, conversational Sri Lankan university student Sinhala (Unicode script) mixed seamlessly with English technical keywords—exactly how a top senior student explains a tough lecture in a campus 'Kuppiya' study session!
+        - NEVER translate technical terms into awkward dictionary Sinhala. Keep ALL technical terms, acronyms, data structures, protocols, and action verbs in English (e.g., 'Database Indexing', 'API Gateway', 'Backpropagation', 'Latency', 'Cache Miss', 'Deadlock', 'Container').
+        - Example good bullet style: "<hl>RAG Architecture</hl> එකෙන් වෙන්නේ LLM එකට අපේම Private PDF හෝ Database එකක තියෙන නිවැරදි data දීලා <hl>Hallucinations</hl> නැති කරන එකයි."
+        - Example good bullet style: "සරලවම කිව්වොත් <hl>Load Balancer</hl> එකෙන් කරන්නේ එකම Server එකට එන ලොකු Traffic එක Servers කිහිපයක් අතරේ සමානව බෙදලා <hl>High Availability</hl> තියාගන්න එකයි."
+        - Keep main `title`, `diagram_title`, and `diagram_steps.label` in clear English, while `subtitle`, `key_points`, `diagram_steps.detail`, and `pro_tip` use this natural Sinhala + English Kuppiya mix.
+        {caption_rule}
+        """
+    else:
+        caption_rule = (
+            "- **SOCIAL CAPTION LANGUAGE (MUST MATCH)**: Write `linkedin_caption` in 100% professional, engaging English tailored for LinkedIn and Facebook tech communities."
+            if include_caption
+            else ""
+        )
+        return f"""
+        LANGUAGE STYLE: 100% CRISP ACADEMIC & PROFESSIONAL ENGLISH:
+        - Write all titles, subtitles, bullet points, diagram steps, and pro-tips in clear, high-impact English suitable for university revision and global tech portfolios.
+        {caption_rule}
+        """
 
 
-# =====================================================================
-# 4. CURRICULUM & COPY GENERATOR AGENT
-# =====================================================================
+def _generate_batch_of_5(
+    client: Any,
+    working_models: List[str],
+    topic: str,
+    subject_category: str,
+    language: str,
+    batch_index: int,
+    total_pages: int,
+) -> Dict[str, Any]:
+    """Generates a single 5-page module with thinking_budget=0 for sub-3-second latency."""
+    outline = MODULE_OUTLINES[batch_index % len(MODULE_OUTLINES)]
+    start_page = batch_index * 5 + 1
+    end_page = start_page + 4
+    include_caption = batch_index == 0
+    schema_cls = BatchSlideDeckWithCaption if include_caption else BatchSlideDeckOnly
+    lang_instructions = _build_language_instructions(language, include_caption=include_caption)
+    slides_plan = "\n".join([f"- Page {start_page + i}: {desc}" for i, desc in enumerate(outline["slides"])])
+
+    prompt = f"""
+    You are a top-performing University Honors Student & Visual Sketchnote Creator specializing in "{subject_category}".
+    Create pages {start_page} to {end_page} (out of a {total_pages}-page study guide) on the topic: "{topic}".
+    Current Module Focus: {outline["module_name"]}
+
+    {lang_instructions}
+
+    Formatting Rules for High-Speed Sketchnotes:
+    1. Generate EXACTLY 5 pages numbered {start_page} through {end_page}:
+    {slides_plan}
+    2. In `key_points` (3 or 4 bullets per page, max 18 words per bullet), wrap 1 or 2 core technical phrases per bullet inside `<hl>...</hl>` tags so they get a yellow marker highlight.
+    3. Keep `diagram_steps` (3 or 4 steps per page) concise: `label` should be 2-4 words in English, and `detail` should be a 1-sentence explanation.
+    """
+
+    # Rotate starting model across batches so parallel 10/30-page runs spread quota load
+    num_models = len(working_models)
+    ordered_models = [working_models[(batch_index + i) % num_models] for i in range(num_models)]
+
+    last_error = None
+    for model_name in ordered_models:
+        try:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=schema_cls,
+                        temperature=0.35,
+                        thinking_config=types.ThinkingConfig(thinking_budget=0),
+                    ),
+                )
+            except Exception:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=schema_cls,
+                        temperature=0.35,
+                    ),
+                )
+            parsed = schema_cls.model_validate_json(response.text)
+            for idx, p in enumerate(parsed.pages):
+                p.page_number = start_page + idx
+
+            return {
+                "pages": parsed.pages,
+                "linkedin_caption": getattr(parsed, "linkedin_caption", ""),
+                "hashtags": getattr(parsed, "hashtags", []),
+            }
+        except Exception as e:
+            last_error = e
+            continue
+
+    raise RuntimeError(f"Batch {batch_index + 1} failed across all models. Last error: {last_error}")
+
+
 def generate_5_page_study_guide(
     topic: str,
     language: str = "Sinhala_Mix",
     api_key: str = None,
     subject_category: str = "AI & Machine Learning",
+    num_pages: int = 5,
 ) -> StudyCarouselResponse:
-    """Generates a complete 5-page university study carousel + social media caption."""
-    resolved_key = api_key or os.getenv("GEMINI_API_KEY")
-    client = genai.Client(api_key=resolved_key)
-    working_models = get_working_models(resolved_key)
+    """
+    Generates a 5, 10, or 30-page handwritten study deck.
+    Uses Gemini Flash-Lite with thinking_budget=0 and parallel batch execution.
+    """
+    active_key = api_key or os.getenv("GEMINI_API_KEY")
+    client = get_genai_client(active_key)
+    working_models = get_working_models(active_key)
 
-    if language == "Sinhala_Mix":
-        lang_rules = """
-        LANGUAGE MODE: SINHALA + ENGLISH TECHNICAL MIX (University Kuppiya Style).
-        - Write explanations in natural, clear conversational Sinhala Unicode script.
-        - Keep ALL technical terms, acronyms, and engineering names in English script (e.g., Vector Database, API Gateway, TCP/IP, Big-O, Docker).
-        - Write `page_title`, `subtitle_tag`, and `diagram_steps.title` in English.
-        - Write the `social_caption` in natural human-like Sinhala + English mix ("Mn ada igena gaththa...", no robotic AI clichés) with relevant hashtags (#NIWNOTES #UniversityNotes).
-        """
-    else:
-        lang_rules = """
-        LANGUAGE MODE: 100% GLOBAL ENGLISH.
-        - Write all explanations, bullet points, diagrams, and the social caption in crisp, beginner-friendly English.
-        - Write the `social_caption` like a top university student sharing personal study notes on LinkedIn/Facebook with hashtags (#NIWNOTES #TechNotes).
-        """
+    valid_pages = num_pages if num_pages in (5, 10, 30) else 5
+    num_batches = valid_pages // 5
 
-    prompt = f"""
-    You are the Lead University Note Creator for 'NIWNOTES'.
-    University Subject Track: "{subject_category}"
-    Target Concept: "{topic}"
+    if num_batches == 1:
+        batch_res = _generate_batch_of_5(
+            client, working_models, topic, subject_category, language, 0, valid_pages
+        )
+        return StudyCarouselResponse(
+            pages=batch_res["pages"],
+            linkedin_caption=batch_res["linkedin_caption"],
+            hashtags=batch_res["hashtags"],
+        )
 
-    Create a 5-page progressive handwritten study guide so any student or developer scrolling social media can master this topic from scratch:
-    - Page 1: The Hook, Simple Definition & Real-World Mental Model
-    - Page 2: Core Architecture & How It Works Step-by-Step
-    - Page 3: Deep Dive into Key Components & Technical Mechanics
-    - Page 4: Real-World Engineering Use Cases & Implementation Pattern
-    - Page 5: Common Pitfalls, Best Practices & Exam/Interview Cheat Sheet
+    # Parallel multi-batch execution for 10-page (2 batches) and 30-page (6 batches) decks
+    batch_results: Dict[int, Dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=min(num_batches, 6)) as executor:
+        future_map = {
+            executor.submit(
+                _generate_batch_of_5,
+                client,
+                working_models,
+                topic,
+                subject_category,
+                language,
+                b_idx,
+                valid_pages,
+            ): b_idx
+            for b_idx in range(num_batches)
+        }
+        for future in future_map:
+            b_idx = future_map[future]
+            batch_results[b_idx] = future.result()
 
-    {lang_rules}
+    all_pages: List[NotePage] = []
+    for b_idx in range(num_batches):
+        all_pages.extend(batch_results[b_idx]["pages"])
 
-    INLINE HIGHLIGHT RULES (CRITICAL):
-    Inside `intro_definition` and `bullet_points`, highlight key terms using ONLY these 3 flat tags (NEVER nest tags inside each other):
-    1. <mark>important concept</mark> (for marker highlight)
-    2. <b>key term</b> (for hand-drawn ink box)
-    3. <u>crucial phrase</u> (for pen underline)
-    Keep tagged phrases short (1 to 4 words max).
+    first_batch = batch_results[0]
+    return StudyCarouselResponse(
+        pages=all_pages,
+        linkedin_caption=first_batch["linkedin_caption"],
+        hashtags=first_batch["hashtags"],
+    )
+
+
+# =====================================================================
+# 4. HTML/CSS Sketchnote Page Builder & Zero-Wait Interactive Studio
+# =====================================================================
+def _format_highlight(text: str) -> str:
+    return (
+        text.replace("<hl>", '<span class="hl">')
+        .replace("</hl>", "</span>")
+        .replace("**", "")
+    )
+
+
+def _get_template_css(t: Dict[str, Any]) -> str:
+    """Returns the CSS stylesheet for a 1000x1250 handwritten note page."""
+    return f"""
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }}
+        .niw-page {{
+            width: 1000px;
+            height: 1250px;
+            background-color: {t["paper_bg"]};
+            background-image: {t["line_css"]};
+            background-size: {t["bg_size"]};
+            font-family: 'Patrick Hand', 'Noto Sans Sinhala', sans-serif;
+            color: {t["text_color"]};
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: {"36px 55px 38px 75px" if not t["show_holes"] else "36px 55px 38px 108px"};
+            border: 1px solid rgba(0,0,0,0.08);
+            text-align: left;
+            user-select: none;
+        }}
+        .niw-page::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: {"52px" if not t["show_holes"] else "86px"};
+            width: 4px;
+            border-left: {t["margin_line"]};
+            z-index: 1;
+        }}
+        .niw-holes {{
+            position: absolute;
+            left: 26px;
+            top: 60px;
+            bottom: 60px;
+            width: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 2;
+        }}
+        .niw-hole {{
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #E2E8F0;
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.28);
+            border: 1px solid #CBD5E1;
+        }}
+        .niw-cornell-banner {{
+            background: {t["box_bg"]};
+            border: 2.5px solid {t["box_border"]};
+            border-radius: 10px;
+            padding: 8px 18px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: {t["title_color"]};
+            box-shadow: 3px 3px 0px {t["accent_color"]};
+        }}
+        .niw-top-section {{
+            position: relative;
+            z-index: 3;
+        }}
+        .niw-meta-bar {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            border-bottom: 2px dashed rgba(148, 163, 184, 0.45);
+            padding-bottom: 6px;
+        }}
+        .niw-topic-pill {{
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: {t["accent_color"]};
+            background: {t["step_bg"]};
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 2px solid {t["accent_color"]};
+            max-width: 72%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        .niw-page-badge {{
+            font-family: 'Caveat', cursive;
+            font-size: 28px;
+            font-weight: 700;
+            color: {t["secondary_accent"]};
+            background: {t["box_bg"]};
+            padding: 2px 16px;
+            border: 2.5px solid {t["secondary_accent"]};
+            border-radius: 18px 6px 16px 6px;
+            transform: rotate(1.5deg);
+            box-shadow: 3px 3px 0px rgba(0,0,0,0.12);
+        }}
+        .niw-title {{
+            font-family: 'Caveat', 'Noto Sans Sinhala', cursive;
+            font-size: 46px;
+            font-weight: 700;
+            color: {t["title_color"]};
+            line-height: 1.12;
+            margin-bottom: 6px;
+        }}
+        .niw-subtitle {{
+            font-size: 22px;
+            color: {t["sub_text_color"]};
+            font-weight: 600;
+            line-height: 1.32;
+            margin-bottom: 14px;
+            padding-left: 10px;
+            border-left: 4px solid {t["secondary_accent"]};
+        }}
+        .niw-points-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+            margin-bottom: 14px;
+        }}
+        .niw-point-item {{
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 22px;
+            line-height: 1.4;
+            color: {t["text_color"]};
+        }}
+        .niw-bullet-star {{
+            color: {t["secondary_accent"]};
+            font-size: 24px;
+            line-height: 1.2;
+            flex-shrink: 0;
+        }}
+        .hl {{
+            background: linear-gradient(104deg, rgba(253, 224, 71, 0) 0.9%, {t["highlight_bg"]} 2.4%, {t["highlight_bg"]} 96%, rgba(253, 224, 71, 0) 98%);
+            padding: 1px 7px;
+            border-radius: 5px;
+            font-weight: 700;
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
+        }}
+        .niw-diagram-card {{
+            position: relative;
+            z-index: 3;
+            background: {t["box_bg"]};
+            border: 3px solid {t["box_border"]};
+            border-radius: 18px 8px 20px 8px;
+            padding: 18px 22px;
+            box-shadow: 6px 6px 0px {t["accent_color"]};
+            margin-bottom: 14px;
+        }}
+        .niw-diagram-header {{
+            font-family: 'Caveat', cursive;
+            font-size: 31px;
+            font-weight: 700;
+            color: {t["accent_color"]};
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px dashed rgba(148, 163, 184, 0.35);
+            padding-bottom: 4px;
+        }}
+        .niw-steps-container {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }}
+        .niw-step-row {{
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: {t["step_bg"]};
+            border: 2px solid rgba(148, 163, 184, 0.45);
+            border-radius: 12px;
+            padding: 9px 14px;
+        }}
+        .niw-step-badge {{
+            background: {t["accent_color"]};
+            color: #FFFFFF;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            font-size: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }}
+        .niw-step-content {{
+            display: flex;
+            flex-direction: column;
+        }}
+        .niw-step-label {{
+            font-weight: 700;
+            font-size: 20px;
+            color: {t["title_color"]};
+            line-height: 1.2;
+        }}
+        .niw-step-detail {{
+            font-size: 18px;
+            color: {t["sub_text_color"]};
+            line-height: 1.3;
+        }}
+        .niw-step-arrow {{
+            text-align: center;
+            font-size: 18px;
+            line-height: 0.9;
+            color: {t["secondary_accent"]};
+            font-weight: 700;
+        }}
+        .niw-bottom-section {{
+            position: relative;
+            z-index: 3;
+        }}
+        .niw-pro-tip-box {{
+            background: {t["pro_tip_bg"]};
+            border: 2.5px solid {t["pro_tip_border"]};
+            border-radius: 12px 20px 10px 18px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.10);
+            transform: rotate(-0.35deg);
+            margin-bottom: 12px;
+        }}
+        .niw-bulb {{
+            font-size: 28px;
+            flex-shrink: 0;
+        }}
+        .niw-pro-tip-text {{
+            font-size: 20px;
+            font-weight: 600;
+            color: {t["pro_tip_text"]};
+            line-height: 1.35;
+        }}
+        .niw-footer {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #64748B;
+            padding-top: 6px;
+            border-top: 2px solid rgba(148, 163, 184, 0.3);
+        }}
     """
 
-    last_err = None
-    for model_name in working_models:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=StudyCarouselResponse,
-                    temperature=0.35,
-                ),
-            )
-            return StudyCarouselResponse.model_validate_json(response.text)
-        except Exception as e:
-            last_err = e
-            continue
 
-    raise RuntimeError(f"Failed to generate study guide: {last_err}")
-
-
-# =====================================================================
-# 5. ZERO-DRIFT HTML/SVG SKETCHNOTE BUILDER (MULTI-TEMPLATE)
-# =====================================================================
-def clean_markup(text: str) -> str:
-    """Ensures only clean, non-nested <mark>, <b>, and <u> tags exist."""
-    if not text:
-        return ""
-    # Strip any disallowed HTML tags
-    allowed = re.sub(r"<(?!/?(mark|b|u)\b)[^>]+>", "", text)
-    # Prevent nested tags inside <mark> or <b>
-    allowed = re.sub(
-        r"<mark>(.*?)</mark>",
-        lambda m: "<mark>" + re.sub(r"</?(b|u|mark)>", "", m.group(1)) + "</mark>",
-        allowed,
-    )
-    return allowed
-
-
-def build_page_html(
+def _build_page_inner_html(
     page: NotePage,
-    topic_name: str,
-    author: str,
-    template_id: str = "classic_cream",
+    total_pages: int,
+    topic: str,
+    template_id: str,
+    element_id: str,
 ) -> str:
-    """Compiles a single NotePage into a 1000x1250px HTML/SVG canvas styled with the chosen template."""
+    """Builds the inner `<div class="niw-page">` markup for a single slide."""
     t = NOTE_TEMPLATES.get(template_id, NOTE_TEMPLATES["classic_cream"])
 
-    intro_html = clean_markup(page.intro_definition)
-    takeaway_html = clean_markup(page.key_takeaway)
-
     bullets_html = ""
-    for idx, b in enumerate(page.bullet_points, 1):
+    for pt in page.key_points[:4]:
+        formatted_pt = _format_highlight(pt)
         bullets_html += f"""
-        <div class="bullet-row">
-            <div class="bullet-icon">0{idx}</div>
-            <div class="bullet-text">{clean_markup(b)}</div>
+        <div class="niw-point-item">
+            <div class="niw-bullet-star">★</div>
+            <div class="niw-point-text">{formatted_pt}</div>
         </div>
         """
 
     steps_html = ""
-    for i, step in enumerate(page.diagram_steps):
-        arrow_svg = ""
-        if i < len(page.diagram_steps) - 1:
-            arrow_svg = f"""
-            <div class="step-arrow">
-                <svg width="28" height="24" viewBox="0 0 28 24" fill="none">
-                    <path d="M2 12 C10 10, 18 14, 24 12 M18 6 L25 12 L18 18"
-                          stroke="{t['ink_blue']}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-            """
+    steps_slice = page.diagram_steps[:4]
+    for idx, step in enumerate(steps_slice):
+        arrow_html = '<div class="niw-step-arrow">↓</div>' if idx < len(steps_slice) - 1 else ""
         steps_html += f"""
-        <div class="step-card">
-            <div class="step-num">{step.step_num}</div>
-            <div class="step-title">{clean_markup(step.title)}</div>
-            <div class="step-detail">{clean_markup(step.detail)}</div>
+        <div class="niw-step-row">
+            <div class="niw-step-badge">{step.step_num}</div>
+            <div class="niw-step-content">
+                <div class="niw-step-label">{step.label}</div>
+                <div class="niw-step-detail">{_format_highlight(step.detail)}</div>
+            </div>
         </div>
-        {arrow_svg}
+        {arrow_html}
         """
 
-    return f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Kalam:wght@400;700&family=Noto+Sans+Sinhala:wght@500;700&display=swap" rel="stylesheet">
-<style>
-* {{ box-sizing: border-box; margin: 0; padding: 0; }}
-body {{
-    width: 1000px;
-    height: 1250px;
-    background-color: {t['paper_bg']};
-    {t['grid_css']}
-    font-family: 'Kalam', 'Noto Sans Sinhala', sans-serif;
-    color: {t['ink_main']};
-    position: relative;
-    overflow: hidden;
-    padding: 46px 54px 42px 78px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}}
-.margin-line {{
-    position: absolute;
-    top: 0; bottom: 0; left: 54px;
-    width: 2px;
-    background: {t['margin_line']};
-}}
-.top-bar {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2.5px solid {t['ink_title']};
-    padding-bottom: 12px;
-    margin-bottom: 14px;
-}}
-.brand-pill {{
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 15px;
-    font-weight: 700;
-    background: {t['badge_bg']};
-    color: {t['badge_text']};
-    padding: 5px 14px;
-    border-radius: 6px;
-    letter-spacing: 0.08em;
-}}
-.page-counter {{
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 16px;
-    font-weight: 700;
-    color: {t['ink_blue']};
-}}
-.header-block {{ margin-bottom: 16px; }}
-.subtitle-tag {{
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    font-weight: 700;
-    color: {t['ink_red']};
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-}}
-.main-title {{
-    font-size: 40px;
-    font-weight: 700;
-    color: {t['ink_title']};
-    line-height: 1.15;
-}}
-.intro-box {{
-    background: {t['card_bg']};
-    border: 2.5px solid {t['card_border']};
-    border-radius: 14px;
-    padding: 18px 22px;
-    font-size: 23px;
-    line-height: 1.52;
-    margin-bottom: 18px;
-    box-shadow: 4px 4px 0px {t['card_border']};
-}}
-.bullets-section {{
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    margin-bottom: 18px;
-}}
-.bullet-row {{
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    background: {t['card_bg']};
-    border-left: 5px solid {t['ink_blue']};
-    border-radius: 0 12px 12px 0;
-    padding: 13px 18px;
-}}
-.bullet-icon {{
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 16px;
-    font-weight: 700;
-    background: {t['ink_blue']};
-    color: #FFFFFF;
-    min-width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 2px;
-}}
-.bullet-text {{
-    font-size: 22px;
-    line-height: 1.5;
-    flex: 1;
-}}
-/* Zero-Drift Inline Annotations */
-mark {{
-    background: linear-gradient(104deg, transparent 0.9%, {t['mark_fill']} 2.4%, {t['mark_fill']} 96%, transparent 98%);
-    color: inherit;
-    padding: 1px 6px;
-    border-radius: 5px;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
-}}
-b {{
-    font-weight: 700;
-    color: {t['ink_red']};
-    padding: 1px 7px;
-    background-color: {t.get('box_fill', 'transparent')};
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 120 40'><path d='M4 6 Q60 2 116 5 Q118 20 115 35 Q60 38 5 34 Q2 20 4 6 Z' fill='none' stroke='{t['box_stroke']}' stroke-width='2.6'/></svg>");
-    background-size: 100% 100%;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
-}}
-u {{
-    text-decoration: none;
-    color: {t['ink_blue']};
-    font-weight: 700;
-    padding-bottom: 3px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 100 10'><path d='M2 7 Q50 2 98 6' fill='none' stroke='{t['underline_stroke']}' stroke-width='3' stroke-linecap='round'/></svg>");
-    background-repeat: repeat-x;
-    background-position: 0 100%;
-    background-size: 100% 8px;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
-}}
-/* Flowchart Box */
-.diagram-container {{
-    background: {t['card_bg']};
-    border: 2.5px dashed {t['ink_blue']};
-    border-radius: 14px;
-    padding: 16px 18px;
-    margin-bottom: 16px;
-}}
-.diagram-header {{
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    font-weight: 700;
-    color: {t['ink_blue']};
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 12px;
-}}
-.steps-row {{
-    display: flex;
-    align-items: stretch;
-    justify-content: space-between;
-    gap: 6px;
-}}
-.step-card {{
-    flex: 1;
-    background: {t['step_bg']};
-    border: 2px solid {t['card_border']};
-    border-radius: 10px;
-    padding: 10px 10px;
-    text-align: center;
-}}
-.step-num {{
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    color: {t['ink_red']};
-    margin-bottom: 3px;
-}}
-.step-title {{
-    font-size: 18px;
-    font-weight: 700;
-    color: {t['ink_title']};
-    line-height: 1.2;
-    margin-bottom: 4px;
-}}
-.step-detail {{
-    font-size: 15px;
-    line-height: 1.3;
-    opacity: 0.9;
-}}
-.step-arrow {{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}}
-/* Takeaway Footer */
-.takeaway-box {{
-    background: {t['takeaway_bg']};
-    border: 2.5px solid {t['takeaway_border']};
-    border-radius: 12px;
-    padding: 13px 18px;
-    font-size: 20px;
-    line-height: 1.42;
-    margin-bottom: 12px;
-}}
-.takeaway-label {{
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    color: {t['ink_red']};
-    text-transform: uppercase;
-    margin-right: 8px;
-}}
-.footer-bar {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    opacity: 0.75;
-    padding-top: 6px;
-    border-top: 1px solid {t['dot_color']};
-}}
-</style>
-</head>
-<body>
-    <div class="margin-line"></div>
-    <div>
-        <div class="top-bar">
-            <span class="brand-pill">NIWNOTES // {topic_name[:38].upper()}</span>
-            <span class="page-counter">SLIDE 0{page.page_number} / 05</span>
+    holes_html = ""
+    if t["show_holes"]:
+        holes_html = '<div class="niw-holes">' + "".join(['<div class="niw-hole"></div>' for _ in range(11)]) + "</div>"
+
+    cornell_header = ""
+    if t["cornell_layout"]:
+        cornell_header = f"""
+        <div class="niw-cornell-banner">
+            <div>CORNELL REVISION SYSTEM • NIWNOTES</div>
+            <div>MODULE SHEET {page.page_number} OF {total_pages}</div>
         </div>
-        <div class="header-block">
-            <div class="subtitle-tag">{page.subtitle_tag}</div>
-            <div class="main-title">{page.page_title}</div>
+        """
+
+    return f"""
+    <div class="niw-page" id="{element_id}" data-page="{page.page_number}">
+        {holes_html}
+        <div class="niw-top-section">
+            {cornell_header}
+            <div class="niw-meta-bar">
+                <div class="niw-topic-pill">📚 {topic[:62]}</div>
+                <div class="niw-page-badge">Page {page.page_number} / {total_pages}</div>
+            </div>
+            <div class="niw-title">{page.title}</div>
+            <div class="niw-subtitle">{_format_highlight(page.subtitle)}</div>
+            <div class="niw-points-list">
+                {bullets_html}
+            </div>
         </div>
-        <div class="intro-box">{intro_html}</div>
-        <div class="bullets-section">{bullets_html}</div>
-    </div>
-    <div>
-        <div class="diagram-container">
-            <div class="diagram-header">&#9654; {page.diagram_title}</div>
-            <div class="steps-row">{steps_html}</div>
+
+        <div class="niw-diagram-card">
+            <div class="niw-diagram-header">⚡ {page.diagram_title}</div>
+            <div class="niw-steps-container">
+                {steps_html}
+            </div>
         </div>
-        <div class="takeaway-box">
-            <span class="takeaway-label">[KEY TAKEAWAY]</span> {takeaway_html}
-        </div>
-        <div class="footer-bar">
-            <span>NIWNOTES UNIVERSITY SOCIAL LEARNING</span>
-            <span>CURATED BY {author}</span>
+
+        <div class="niw-bottom-section">
+            <div class="niw-pro-tip-box">
+                <div class="niw-bulb">💡</div>
+                <div class="niw-pro-tip-text"><strong>Key Takeaway:</strong> {_format_highlight(page.pro_tip)}</div>
+            </div>
+            <div class="niw-footer">
+                <div>📌 NIWNOTES • UNIVERSITY SOCIAL LEARNING</div>
+                <div>#{page.footer_tag.replace(" ", "")} • Swipe ➔</div>
+            </div>
         </div>
     </div>
-</body>
-</html>"""
+    """
 
 
-def _render_single_page(args: tuple) -> str:
-    """Worker function for parallel Chromium rendering."""
-    page, topic_name, author, output_dir, template_id = args
-    html_content = build_page_html(page, topic_name, author, template_id)
-    file_name = f"note_page_{page.page_number}.png"
-
-    hti = Html2Image(
-        size=(1000, 1250),
-        output_path=output_dir,
-        custom_flags=[
-            "--virtual-time-budget=1000",
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--disable-extensions",
-            "--hide-scrollbars",
-            "--log-level=3",
-        ],
-    )
-    hti.screenshot(html_str=html_content, save_as=file_name)
-    return os.path.join(output_dir, file_name)
-
-
-def render_all_pages(
-    guide: StudyCarouselResponse,
-    author: str = "@NIWNOTES",
-    output_dir: str = "output",
+def build_interactive_studio_html(
+    carousel_data: StudyCarouselResponse,
+    topic: str,
     template_id: str = "classic_cream",
-) -> list[str]:
-    """Renders all 5 slides in parallel using ThreadPoolExecutor for 4x faster execution."""
-    os.makedirs(output_dir, exist_ok=True)
-    tasks = [
-        (page, guide.topic_name, author, output_dir, template_id)
-        for page in sorted(guide.pages, key=lambda p: p.page_number)
-    ]
+    subject_category: str = "AI & Machine Learning",
+    language: str = "Sinhala_Mix",
+) -> str:
+    """
+    Builds a self-contained, zero-wait Woday-styled Interactive Studio HTML component.
+    - Renders all 5, 10, or 30 slides LIVE in the browser with 0ms server wait.
+    - Provides instant client-side slide switching (0ms).
+    - Exports crisp 1000x1250 PNGs and full .ZIP bundles directly via browser GPU (html-to-image + JSZip).
+    - Provides 1-click clipboard copy for the LinkedIn/Facebook caption.
+    """
+    t = NOTE_TEMPLATES.get(template_id, NOTE_TEMPLATES["classic_cream"])
+    page_css = _get_template_css(t)
+    total_pages = len(carousel_data.pages)
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        results = list(executor.map(_render_single_page, tasks))
+    full_caption = f"{carousel_data.linkedin_caption}\n\n" + " ".join(
+        [f"#{h.strip('#')}" for h in carousel_data.hashtags]
+    )
+    caption_json = json.dumps(full_caption)
+    lang_label = "🇱🇰 Sinhala + English Kuppiya" if language == "Sinhala_Mix" else "🇬🇧 100% English"
 
-    return results
+    # Build thumbnail cards and hidden full-resolution export targets
+    thumbs_html = ""
+    inspector_slides_html = ""
+
+    for idx, page in enumerate(carousel_data.pages):
+        active_cls = "active" if idx == 0 else ""
+        slide_dom_id = f"niw-export-slide-{idx}"
+        thumb_inner = _build_page_inner_html(
+            page, total_pages, topic, template_id, f"niw-thumb-slide-{idx}"
+        )
+        export_inner = _build_page_inner_html(
+            page, total_pages, topic, template_id, slide_dom_id
+        )
+
+        thumbs_html += f"""
+        <div class="studio-thumb-card {active_cls}" onclick="selectSlide({idx})" id="thumb-btn-{idx}">
+            <div class="studio-thumb-header">
+                <span class="studio-thumb-num">#{page.page_number:02d}</span>
+                <span class="studio-thumb-title">{page.title[:22]}</span>
+            </div>
+            <div class="studio-thumb-viewport">
+                <div class="studio-thumb-scaler">
+                    {thumb_inner}
+                </div>
+            </div>
+        </div>
+        """
+
+        inspector_slides_html += f"""
+        <div class="inspector-slide-frame {active_cls}" id="inspector-frame-{idx}">
+            <div class="inspector-scaler">
+                {export_inner}
+            </div>
+        </div>
+        """
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Patrick+Hand&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+Sinhala:wght@500;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        {page_css}
+
+        body {{
+            background: transparent;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            color: #141413;
+            margin: 0;
+            padding: 4px 2px 20px 2px;
+        }}
+
+        /* Top Action Bar */
+        .studio-bar {{
+            background: #FFFFFF;
+            border: 1px solid rgba(20, 20, 19, 0.09);
+            border-radius: 18px;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 8px 24px -6px rgba(20, 20, 19, 0.05);
+            margin-bottom: 16px;
+        }}
+        .studio-bar-left {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }}
+        .studio-badge-green {{
+            background: #DCFCE7;
+            color: #15803D;
+            font-weight: 800;
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 999px;
+        }}
+        .studio-badge-gray {{
+            background: #F3F2EE;
+            color: #575653;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(20,20,19,0.07);
+        }}
+        .studio-actions {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }}
+        .btn-woday-primary {{
+            background: #141413;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.16s ease;
+            box-shadow: 0 4px 12px rgba(20, 20, 19, 0.14);
+        }}
+        .btn-woday-primary:hover {{
+            background: #292826;
+            transform: translateY(-1px);
+        }}
+        .btn-woday-secondary {{
+            background: #F3F2EE;
+            color: #141413;
+            border: 1px solid rgba(20, 20, 19, 0.12);
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.16s ease;
+        }}
+        .btn-woday-secondary:hover {{
+            background: #EAE8E1;
+        }}
+
+        /* Horizontal Thumbnail Strip */
+        .studio-thumb-strip {{
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 6px 4px 14px 4px;
+            margin-bottom: 18px;
+            scrollbar-width: thin;
+        }}
+        .studio-thumb-card {{
+            background: #FFFFFF;
+            border: 2px solid rgba(20, 20, 19, 0.08);
+            border-radius: 14px;
+            padding: 8px;
+            width: 176px;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: all 0.16s ease;
+            box-shadow: 0 4px 12px rgba(20, 20, 19, 0.04);
+        }}
+        .studio-thumb-card:hover {{
+            transform: translateY(-2px);
+            border-color: rgba(20, 20, 19, 0.25);
+        }}
+        .studio-thumb-card.active {{
+            border-color: #141413;
+            box-shadow: 0 0 0 3px rgba(20, 20, 19, 0.12);
+            background: #FAF9F5;
+        }}
+        .studio-thumb-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            gap: 4px;
+        }}
+        .studio-thumb-num {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            background: #141413;
+            color: #FFFFFF;
+            padding: 2px 7px;
+            border-radius: 6px;
+        }}
+        .studio-thumb-title {{
+            font-size: 11px;
+            font-weight: 700;
+            color: #575653;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        .studio-thumb-viewport {{
+            width: 156px;
+            height: 195px;
+            overflow: hidden;
+            border-radius: 8px;
+            position: relative;
+            border: 1px solid rgba(0,0,0,0.06);
+        }}
+        .studio-thumb-scaler {{
+            transform: scale(0.156);
+            transform-origin: top left;
+            width: 1000px;
+            height: 1250px;
+            pointer-events: none;
+        }}
+
+        /* Main Split Layout: Reader + Social Caption */
+        .studio-main-grid {{
+            display: grid;
+            grid-template-columns: 520px 1fr;
+            gap: 20px;
+            align-items: start;
+        }}
+        @media (max-width: 980px) {{
+            .studio-main-grid {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+
+        /* Left Column: High-Res Slide Inspector */
+        .inspector-card {{
+            background: #FFFFFF;
+            border: 1px solid rgba(20, 20, 19, 0.09);
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 12px 30px -8px rgba(20, 20, 19, 0.06);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }}
+        .inspector-toolbar {{
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }}
+        .inspector-slide-counter {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: #141413;
+            background: #F3F2EE;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }}
+        .inspector-viewport {{
+            width: 480px;
+            height: 600px;
+            overflow: hidden;
+            border-radius: 12px;
+            border: 1px solid rgba(20, 20, 19, 0.10);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+            position: relative;
+        }}
+        .inspector-slide-frame {{
+            display: none;
+            width: 480px;
+            height: 600px;
+        }}
+        .inspector-slide-frame.active {{
+            display: block;
+        }}
+        .inspector-scaler {{
+            transform: scale(0.48);
+            transform-origin: top left;
+            width: 1000px;
+            height: 1250px;
+        }}
+
+        /* Right Column: Social Post Studio */
+        .caption-card {{
+            background: #FFFFFF;
+            border: 1px solid rgba(20, 20, 19, 0.09);
+            border-radius: 20px;
+            padding: 22px;
+            box-shadow: 0 12px 30px -8px rgba(20, 20, 19, 0.06);
+        }}
+        .caption-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }}
+        .caption-title {{
+            font-size: 17px;
+            font-weight: 800;
+            color: #141413;
+        }}
+        .caption-textarea {{
+            width: 100%;
+            height: 410px;
+            background: #F7F6F2;
+            border: 1px solid rgba(20, 20, 19, 0.10);
+            border-radius: 14px;
+            padding: 16px;
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', sans-serif;
+            font-size: 14px;
+            line-height: 1.65;
+            color: #141413;
+            resize: vertical;
+            margin-bottom: 14px;
+        }}
+        .hashtag-row {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }}
+        .hashtag-pill {{
+            background: #F3F2EE;
+            color: #141413;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 11px;
+            border-radius: 999px;
+            border: 1px solid rgba(20, 20, 19, 0.08);
+        }}
+    </style>
+    </head>
+    <body>
+
+        <!-- Top Action Bar -->
+        <div class="studio-bar">
+            <div class="studio-bar-left">
+                <span class="studio-badge-green">⚡ Instant Live Render</span>
+                <span class="studio-badge-gray">🎨 {t["name"]}</span>
+                <span class="studio-badge-gray">📑 {total_pages} Pages</span>
+                <span class="studio-badge-gray">{lang_label}</span>
+            </div>
+            <div class="studio-actions">
+                <button class="btn-woday-secondary" id="btn-dl-single" onclick="downloadActiveSlide()">
+                    🖼️ Download Current Slide (.PNG)
+                </button>
+                <button class="btn-woday-primary" id="btn-dl-zip" onclick="downloadAllSlidesZip()">
+                    📦 Download All {total_pages} Slides (.ZIP)
+                </button>
+            </div>
+        </div>
+
+        <!-- Thumbnail Strip (Click any slide to switch instantly in 0ms) -->
+        <div class="studio-thumb-strip">
+            {thumbs_html}
+        </div>
+
+        <!-- Split Inspector & Social Post Studio -->
+        <div class="studio-main-grid">
+            <div class="inspector-card">
+                <div class="inspector-toolbar">
+                    <button class="btn-woday-secondary" onclick="stepSlide(-1)">◀ Prev</button>
+                    <span class="inspector-slide-counter" id="slide-counter-label">Slide 01 / {total_pages:02d}</span>
+                    <button class="btn-woday-secondary" onclick="stepSlide(1)">Next ▶</button>
+                </div>
+                <div class="inspector-viewport">
+                    {inspector_slides_html}
+                </div>
+            </div>
+
+            <div class="caption-card">
+                <div class="caption-header">
+                    <div>
+                        <div class="caption-title">💼 LinkedIn & Facebook Study Post</div>
+                        <div style="font-size:12px; color:#575653; margin-top:2px;">
+                            Automatically matched to your selected language ({lang_label})
+                        </div>
+                    </div>
+                    <button class="btn-woday-primary" id="btn-copy-caption" onclick="copyCaption()">
+                        📋 Copy Caption & Hashtags
+                    </button>
+                </div>
+
+                <textarea class="caption-textarea" id="caption-box">{full_caption}</textarea>
+
+                <div class="hashtag-row">
+                    {"".join([f'<span class="hashtag-pill">#{h.strip("#")}</span>' for h in carousel_data.hashtags])}
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let activeSlideIndex = 0;
+            const totalSlides = {total_pages};
+            const defaultCaption = {caption_json};
+
+            function selectSlide(idx) {{
+                if (idx < 0 || idx >= totalSlides) return;
+                activeSlideIndex = idx;
+
+                for (let i = 0; i < totalSlides; i++) {{
+                    const thumb = document.getElementById('thumb-btn-' + i);
+                    const frame = document.getElementById('inspector-frame-' + i);
+                    if (i === idx) {{
+                        thumb.classList.add('active');
+                        frame.classList.add('active');
+                    }} else {{
+                        thumb.classList.remove('active');
+                        frame.classList.remove('active');
+                    }}
+                }}
+
+                const numStr = String(idx + 1).padStart(2, '0');
+                const totStr = String(totalSlides).padStart(2, '0');
+                document.getElementById('slide-counter-label').innerText = `Slide ${{numStr}} / ${{totStr}}`;
+            }}
+
+            function stepSlide(delta) {{
+                let next = activeSlideIndex + delta;
+                if (next < 0) next = totalSlides - 1;
+                if (next >= totalSlides) next = 0;
+                selectSlide(next);
+            }}
+
+            async function downloadActiveSlide() {{
+                const btn = document.getElementById('btn-dl-single');
+                const origText = btn.innerText;
+                btn.innerText = '⏳ Exporting PNG...';
+                try {{
+                    await document.fonts.ready;
+                    const node = document.getElementById('niw-export-slide-' + activeSlideIndex);
+                    const dataUrl = await htmlToImage.toPng(node, {{
+                        width: 1000,
+                        height: 1250,
+                        pixelRatio: 1.25,
+                        cacheBust: true
+                    }});
+                    const link = document.createElement('a');
+                    link.download = `NIWNOTES_Slide_${{String(activeSlideIndex + 1).padStart(2, '0')}}.png`;
+                    link.href = dataUrl;
+                    link.click();
+                    btn.innerText = '✅ Downloaded PNG!';
+                }} catch (err) {{
+                    console.error(err);
+                    btn.innerText = '⚠️ Retry Download';
+                }}
+                setTimeout(() => {{ btn.innerText = origText; }}, 2000);
+            }}
+
+            async function downloadAllSlidesZip() {{
+                const btn = document.getElementById('btn-dl-zip');
+                const origText = btn.innerText;
+                try {{
+                    await document.fonts.ready;
+                    const zip = new JSZip();
+                    for (let i = 0; i < totalSlides; i++) {{
+                        btn.innerText = `⚡ Rendering ${{i + 1}} / ${{totalSlides}}...`;
+                        // Temporarily ensure frame is rendered in DOM for capture
+                        const frame = document.getElementById('inspector-frame-' + i);
+                        const wasActive = frame.classList.contains('active');
+                        if (!wasActive) {{
+                            frame.style.display = 'block';
+                            frame.style.position = 'fixed';
+                            frame.style.left = '-9999px';
+                        }}
+
+                        const node = document.getElementById('niw-export-slide-' + i);
+                        const dataUrl = await htmlToImage.toPng(node, {{
+                            width: 1000,
+                            height: 1250,
+                            pixelRatio: 1.25
+                        }});
+                        const base64Data = dataUrl.split(',')[1];
+                        zip.file(`NIWNOTES_Slide_${{String(i + 1).padStart(2, '0')}}.png`, base64Data, {{base64: true}});
+
+                        if (!wasActive) {{
+                            frame.style.display = '';
+                            frame.style.position = '';
+                            frame.style.left = '';
+                        }}
+                    }}
+                    zip.file('social_post_caption.txt', document.getElementById('caption-box').value);
+                    btn.innerText = '📦 Packing ZIP...';
+                    const content = await zip.generateAsync({{type: 'blob'}});
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = `NIWNOTES_${{totalSlides}}_Pages_Study_Pack.zip`;
+                    link.click();
+                    btn.innerText = '✅ ZIP Downloaded!';
+                }} catch (err) {{
+                    console.error(err);
+                    btn.innerText = '⚠️ Retry ZIP';
+                }}
+                setTimeout(() => {{ btn.innerText = origText; }}, 2400);
+            }}
+
+            function copyCaption() {{
+                const btn = document.getElementById('btn-copy-caption');
+                const txt = document.getElementById('caption-box').value;
+                navigator.clipboard.writeText(txt);
+                btn.innerText = '✅ Copied to Clipboard!';
+                setTimeout(() => {{ btn.innerText = '📋 Copy Caption & Hashtags'; }}, 2000);
+            }}
+        </script>
+    </body>
+    </html>"""
