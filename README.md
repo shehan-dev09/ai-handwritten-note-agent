@@ -1,17 +1,17 @@
 <div align="center">
 
-# Genesis Note Studio — Autonomous AI/ML Sketchnote & Viral Copy Engine
+#  NIWNote Studio — Autonomous AI/ML Sketchnote & Viral Copy Engine
 
 **An end-to-end Multi-Agent AI system that autonomously discovers trending AI/ML breakthroughs, synthesizes a 5-page curriculum, renders realistic handwritten study carousels, and writes human-like social media launch copy.**
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)]([https://your-app-name.streamlit.app](https://ai-handwritten-note-agent.streamlit.app/))
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-handwritten-note-agent.streamlit.app/)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-00FF88?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Gemini 3.x SDK](https://img.shields.io/badge/Google%20GenAI-Gemini%203.x-00FF88?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2%20Structured%20Outputs-B6FF3C?style=flat-square)](https://docs.pydantic.dev/)
 [![Headless Chromium](https://img.shields.io/badge/Renderer-HTML%2FCSS%2FSVG%20to%20PNG-2DFFA8?style=flat-square&logo=googlechrome&logoColor=white)](https://pypi.org/project/html2image/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-white?style=flat-square)](LICENSE)
 
-[**Launch Live Studio Web App**](https://your-app-name.streamlit.app) • [**Architecture**](#-system-architecture) • [**Sample Output**](#-sample-handwritten-carousel-output) • [**Local Setup**](#-quick-start-local-installation)
+[**Launch Live Studio Web App**](https://ai-handwritten-note-agent.streamlit.app/) • [**Architecture**](#-system-architecture) • [**Sample Output**](#-sample-handwritten-carousel-output) • [**Local Setup**](#-quick-start-local-installation)
 
 </div>
 
@@ -21,7 +21,7 @@
 
 Creating high-retention technical carousels for LinkedIn and Facebook typically requires hours of reading research papers, structuring a beginner-friendly curriculum, illustrating diagrams by hand, and crafting engaging copy.
 
-**Genesis Note Studio** automates this entire workflow at **$0 cost** using a multi-agent pipeline:
+**NIWNote Studio** automates this entire workflow at **$0 cost** using a multi-agent pipeline:
 1. **Live Trend Discovery Agent (`trend_agent.py`):** Queries **HuggingFace Daily Papers** and **HackerNews Algolia APIs** in real time to identify high-velocity AI/ML topics.
 2. **Curriculum & Copywriter Agent (`note_generator.py`):** Uses **Google Gemini 3.x Flash** models with strict **Pydantic v2** schema validation to transform complex concepts into a cohesive **5-page progressive study guide** plus an authentic, human-toned social media caption.
 3. **Zero-Drift Handwritten Sketchnote Renderer (`note_generator.py`):** Compiles structured JSON into a custom **Dot-Grid Notebook Canvas** with inline SVG hand-drawn markers, red ink box callouts, and flowcharts, rendered at `1000x1250px` (4:5 portrait aspect ratio) via Headless Chromium.
@@ -33,7 +33,7 @@ Creating high-retention technical carousels for LinkedIn and Facebook typically 
 
 Every run produces a **5-page progressive learning carousel** (`1000x1250px` per slide) engineered for maximum readability on mobile and desktop feeds:
 
-| Slide 01 — Hook & Mental Model | Slide 02 — Core Architecture & Flowchart |
+| Slide 01 — ENGLISH | Slide 02 — SINHALA MIX |
 | :---: | :---: |
 | ![Sample Note Page 1](assets/note_page_1.png) | ![Sample Note Page 2](assets/note_page_2.png) |
 
@@ -61,7 +61,7 @@ flowchart LR
     end
 
     subgraph Studio["4. Delivery Interfaces"]
-        WEB["Genesis Note Studio Web UI<br/>(Streamlit Cloud + ZIP Export)"]
+        WEB["NIWNote Studio Web UI<br/>(Streamlit Cloud + ZIP Export)"]
         CLI["Interactive CLI Pipeline<br/>(main.py)"]
     end
 
@@ -142,7 +142,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 ```bash
 streamlit run app.py
 ```
-Open `http://localhost:8501` in your browser to access the **Genesis Note Studio** workspace.
+Open `http://localhost:8501` in your browser to access the **NIWNote Studio** workspace.
 
 ### 5. Or Run the Interactive CLI
 ```bash
