@@ -15,79 +15,228 @@ from trend_agent import UNIVERSITY_SUBJECTS, discover_viral_topics
 load_dotenv()
 
 # =====================================================================
+# AUTO-SYNC CLEAN LIGHT THEME IN .streamlit/config.toml
+# =====================================================================
+os.makedirs(".streamlit", exist_ok=True)
+config_path = os.path.join(".streamlit", "config.toml")
+expected_config = (
+    '[theme]\n'
+    'base = "light"\n'
+    'primaryColor = "#141413"\n'
+    'backgroundColor = "#F7F6F2"\n'
+    'secondaryBackgroundColor = "#FFFFFF"\n'
+    'textColor = "#141413"\n'
+    'font = "sans serif"\n\n'
+    '[server]\n'
+    'headless = true\n'
+)
+if not os.path.exists(config_path) or open(config_path, "r", encoding="utf-8").read() != expected_config:
+    with open(config_path, "w", encoding="utf-8") as cf:
+        cf.write(expected_config)
+
+# =====================================================================
 # PAGE CONFIGURATION
 # =====================================================================
 st.set_page_config(
-    page_title="NIWNOTES // University Study Post Studio",
+    page_title="NIWNOTES — All-in-One University Study Note Studio",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 # =====================================================================
-# NIWNOTES STUDIO CSS (GREEN x BLACK GLASSMORPHISM // MOBILE + WEB)
+# WODAY.APP INSPIRED CLEAN macOS DESIGN SYSTEM
 # =====================================================================
-STUDIO_CSS = """
+WODAY_CLEAN_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
 
 :root, html, body, .stApp {
-    --bg: #020504;
-    --g: #00FF88;
-    --lime: #B6FF3C;
-    --text-hi: #ECFFF5;
-    --text-mid: rgba(214, 255, 232, 0.72);
-    --edge: rgba(0, 255, 136, 0.26);
-    --glass: linear-gradient(155deg, rgba(10, 26, 18, 0.84) 0%, rgba(3, 9, 6, 0.92) 100%);
-    --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
-                    0 20px 50px -20px rgba(0, 0, 0, 0.92),
-                    0 0 36px -16px rgba(0, 255, 136, 0.25);
+    --canvas-bg: #F7F6F2;
+    --card-bg: #FFFFFF;
+    --surface-subtle: #F3F2EE;
+    --ink-primary: #141413;
+    --ink-secondary: #575653;
+    --ink-muted: #8A8884;
+    --accent-coral: #FF5A36;
+    --accent-blue: #2563EB;
+    --accent-green: #16A34A;
+    --border-hairline: rgba(20, 20, 19, 0.08);
+    --border-strong: rgba(20, 20, 19, 0.14);
+    --shadow-card: 0 14px 34px -12px rgba(20, 20, 19, 0.06),
+                   0 2px 6px -1px rgba(20, 20, 19, 0.04);
+    --shadow-pill: 0 2px 8px rgba(20, 20, 19, 0.05);
 }
 
+/* ---------- Warm Daylight Canvas ---------- */
 .stApp {
     background:
-        radial-gradient(ellipse 70% 45% at 15% -10%, rgba(0, 255, 136, 0.16), transparent 60%),
-        radial-gradient(ellipse 55% 40% at 95% 20%, rgba(182, 255, 60, 0.08), transparent 60%),
-        var(--bg) !important;
-    font-family: 'Inter', sans-serif !important;
-    color: var(--text-hi) !important;
+        radial-gradient(ellipse 65% 38% at 50% -8%, rgba(255, 168, 120, 0.14), transparent 65%),
+        radial-gradient(ellipse 45% 30% at 85% 12%, rgba(96, 165, 250, 0.08), transparent 60%),
+        var(--canvas-bg) !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    color: var(--ink-primary) !important;
     overflow-x: hidden !important;
 }
 
-.stApp::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background-image:
-        linear-gradient(rgba(0, 255, 136, 0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 255, 136, 0.04) 1px, transparent 1px);
-    background-size: 52px 52px;
-    -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 25%, #000 20%, transparent 75%);
-            mask-image: radial-gradient(ellipse 85% 70% at 50% 25%, #000 20%, transparent 75%);
-    z-index: 0;
-}
-
-#MainMenu, footer, header[data-testid="stHeader"], [data-testid="stSidebar"], [data-testid="collapsedControl"], [data-testid="stToolbar"] {
+/* Hide Default Streamlit Chrome */
+#MainMenu,
+footer,
+header[data-testid="stHeader"],
+[data-testid="stSidebar"],
+[data-testid="collapsedControl"],
+[data-testid="stToolbar"] {
     display: none !important;
 }
 
 .block-container {
-    max-width: 1420px !important;
-    padding: 1.1rem 1.6rem 2.4rem 1.6rem !important;
+    max-width: 1380px !important;
+    padding: 1.25rem 1.75rem 3rem 1.75rem !important;
     margin: 0 auto !important;
-    position: relative;
-    z-index: 1;
 }
 
-/* Glass Cards */
+/* ---------- Floating macOS Pill Navigation Bar ---------- */
+.woday-nav-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.4rem;
+}
+
+.woday-navbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 0.65rem 1rem 0.65rem 0.85rem;
+    background: rgba(255, 255, 255, 0.86);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+            backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid var(--border-hairline);
+    border-radius: 16px;
+    box-shadow: var(--shadow-pill);
+}
+
+.woday-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.woday-logo-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--ink-primary);
+    color: #FFFFFF;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 800;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(20, 20, 19, 0.18);
+}
+
+.woday-brand-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 0.98rem;
+    letter-spacing: -0.02em;
+    color: var(--ink-primary);
+}
+
+.woday-brand-tag {
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: var(--ink-secondary);
+    background: var(--surface-subtle);
+    padding: 0.22rem 0.65rem;
+    border-radius: 99px;
+}
+
+.woday-nav-pills {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.74rem;
+    font-weight: 500;
+    color: var(--ink-secondary);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-hairline);
+    padding: 0.28rem 0.72rem;
+    border-radius: 99px;
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-green);
+}
+
+/* ---------- Centered Clean Editorial Hero ---------- */
+.woday-hero {
+    text-align: center;
+    max-width: 760px;
+    margin: 0 auto 1.65rem auto;
+    padding: 0.25rem 0.5rem;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #FFFFFF;
+    border: 1px solid var(--border-hairline);
+    box-shadow: var(--shadow-pill);
+    padding: 0.3rem 0.85rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    margin-bottom: 0.85rem;
+}
+
+.hero-badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-coral);
+}
+
+.hero-headline {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.95rem, 3.6vw, 2.85rem);
+    line-height: 1.08;
+    letter-spacing: -0.035em;
+    color: var(--ink-primary);
+    margin: 0 0 0.65rem 0;
+}
+
+.hero-subtitle {
+    font-size: 0.96rem;
+    line-height: 1.55;
+    color: var(--ink-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    font-weight: 400;
+}
+
+/* ---------- Elevated macOS Bento Cards ---------- */
 [data-testid="stVerticalBlockBorderWrapper"] {
-    background: var(--glass) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-            backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--edge) !important;
-    border-radius: 18px !important;
-    padding: 1.3rem 1.35rem !important;
-    box-shadow: var(--glass-shadow) !important;
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-hairline) !important;
+    border-radius: 20px !important;
+    padding: 1.4rem 1.45rem !important;
+    box-shadow: var(--shadow-card) !important;
 }
 
 [data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] {
@@ -101,216 +250,293 @@ STUDIO_CSS = """
     padding: 0 !important;
 }
 
-/* Navbar */
-.studio-navbar {
-    display: flex;
-    justify-content: space-between;
+/* ---------- Card Header & macOS Window Bar ---------- */
+.card-step-pill {
+    display: inline-flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 0.75rem 1.2rem;
-    background: var(--glass);
-    border: 1px solid var(--edge);
-    border-radius: 13px;
-    box-shadow: var(--glass-shadow);
-    margin-bottom: 0.2rem;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-secondary);
+    background: var(--surface-subtle);
+    padding: 0.22rem 0.6rem;
+    border-radius: 6px;
+    margin-bottom: 0.3rem;
 }
 
-.nav-brand { display: flex; align-items: center; gap: 10px; }
-.brand-mark {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--g);
-    box-shadow: 0 0 12px var(--g);
-}
-.brand-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700; font-size: 0.92rem;
-    letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--text-hi);
-}
-.brand-sub { font-size: 0.78rem; color: var(--text-mid); }
-.nav-meta {
-    display: flex; align-items: center; gap: 14px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.68rem; color: var(--text-mid);
-}
-.nav-meta .live { color: var(--g); font-weight: 600; }
-
-/* Hero */
-.hero {
-    padding: 1rem 0.15rem 0.95rem 0.15rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-.hero-title {
-    font-family: 'Space Grotesk', sans-serif;
+.card-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.15rem;
     font-weight: 700;
-    font-size: clamp(1.9rem, 3.8vw, 3.1rem);
-    line-height: 0.98;
-    letter-spacing: -0.04em;
-    margin: 0.25rem 0 0 0;
-    background: linear-gradient(180deg, #FFFFFF 15%, #B8FFD9 60%, #00FF88 120%);
-    -webkit-background-clip: text; background-clip: text;
-    color: transparent;
-}
-.hero-title .outline {
-    -webkit-text-fill-color: transparent;
-    -webkit-text-stroke: 1.5px var(--g);
-}
-.hero-sub {
-    max-width: 460px; margin: 0;
-    color: var(--text-mid); font-size: 0.85rem; line-height: 1.55;
+    letter-spacing: -0.02em;
+    color: var(--ink-primary);
+    margin: 0 0 0.15rem 0;
 }
 
-.section-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.15em;
-    color: var(--g);
-    display: block; margin-bottom: 0.2rem;
-}
-.panel-heading {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.2rem; font-weight: 600;
-    color: var(--text-hi); margin: 0;
-}
-.workspace-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(1.15rem, 2vw, 1.55rem);
-    font-weight: 700; color: var(--text-hi); margin: 0;
-}
-
-/* Template Preview Pill */
-.template-preview-bar {
+.macos-window-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(0, 255, 136, 0.07);
-    border: 1px solid rgba(0, 255, 136, 0.24);
-    border-radius: 10px;
-    padding: 0.45rem 0.75rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.65rem;
+    border-bottom: 1px solid var(--border-hairline);
+}
+
+.traffic-lights {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.tl-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.tl-red { background: #FF5F56; border: 1px solid rgba(0,0,0,0.06); }
+.tl-yellow { background: #FFBD2E; border: 1px solid rgba(0,0,0,0.06); }
+.tl-green { background: #27C93F; border: 1px solid rgba(0,0,0,0.06); }
+
+.window-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.7rem;
-    color: var(--text-hi);
+    font-weight: 500;
+    color: var(--ink-muted);
 }
-.swatch-group { display: flex; gap: 6px; align-items: center; }
-.swatch-dot { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); }
 
-/* Inputs & Selectboxes */
+/* ---------- Template Swatch Bar ---------- */
+.template-card-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-hairline);
+    border-radius: 11px;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--ink-primary);
+}
+
+.swatch-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.swatch-chip {
+    width: 15px;
+    height: 15px;
+    border-radius: 5px;
+    border: 1px solid rgba(20, 20, 19, 0.18);
+}
+
+/* ---------- Clean Inputs & Selectboxes ---------- */
 [data-testid="stWidgetLabel"] p, label {
-    color: var(--text-mid) !important;
-    font-size: 0.77rem !important;
-    font-weight: 500 !important;
+    color: var(--ink-secondary) !important;
+    font-size: 0.79rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.15rem !important;
 }
 
-[data-baseweb="input"], [data-baseweb="select"] > div {
-    background-color: rgba(2, 10, 7, 0.82) !important;
-    border: 1px solid rgba(0, 255, 136, 0.25) !important;
+[data-baseweb="input"],
+[data-baseweb="select"] > div {
+    background-color: var(--surface-subtle) !important;
+    border: 1px solid var(--border-hairline) !important;
     border-radius: 11px !important;
-    color: var(--text-hi) !important;
+    color: var(--ink-primary) !important;
     min-height: 41px !important;
+    box-shadow: none !important;
+    transition: all 0.16s ease !important;
 }
 
-[data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {
-    border-color: #00FF88 !important;
-    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.18) !important;
+[data-baseweb="input"]:hover,
+[data-baseweb="select"] > div:hover {
+    border-color: var(--border-strong) !important;
+    background-color: #EFECE6 !important;
 }
 
-[data-baseweb="base-input"] { background: transparent !important; border: none !important; }
+[data-baseweb="input"]:focus-within,
+[data-baseweb="select"] > div:focus-within {
+    background-color: #FFFFFF !important;
+    border-color: var(--ink-primary) !important;
+    box-shadow: 0 0 0 3px rgba(20, 20, 19, 0.07) !important;
+}
+
+[data-baseweb="base-input"] {
+    background: transparent !important;
+    border: none !important;
+}
+
 [data-baseweb="input"] input {
-    color: var(--text-hi) !important;
-    font-size: 0.85rem !important;
+    color: var(--ink-primary) !important;
+    font-size: 0.86rem !important;
+    font-weight: 500 !important;
     padding: 0.5rem 0.8rem !important;
-    caret-color: #00FF88 !important;
+    caret-color: var(--ink-primary) !important;
 }
 
 div[data-baseweb="popover"] ul {
-    background: #040D09 !important;
-    border: 1px solid rgba(0, 255, 136, 0.32) !important;
-    border-radius: 11px !important;
+    background: #FFFFFF !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 28px rgba(20, 20, 19, 0.1) !important;
 }
 
-/* Buttons */
-[data-testid="stButton"] > button, [data-testid="stDownloadButton"] > button {
-    background: rgba(0, 255, 136, 0.07) !important;
-    border: 1px solid rgba(0, 255, 136, 0.28) !important;
+/* ---------- Tactile macOS Buttons ---------- */
+[data-testid="stButton"] > button,
+[data-testid="stDownloadButton"] > button {
+    background: #FFFFFF !important;
+    border: 1px solid var(--border-strong) !important;
     border-radius: 11px !important;
-    color: var(--text-hi) !important;
-    font-weight: 500 !important;
-    font-size: 0.81rem !important;
-    min-height: 41px !important;
-    transition: all 0.18s ease !important;
-}
-[data-testid="stButton"] > button p, [data-testid="stDownloadButton"] > button p {
-    color: var(--text-hi) !important;
-    font-size: 0.81rem !important;
-}
-[data-testid="stButton"] > button:hover, [data-testid="stDownloadButton"] > button:hover {
-    border-color: #00FF88 !important;
-    background: rgba(0, 255, 136, 0.15) !important;
-    box-shadow: 0 0 20px -5px rgba(0, 255, 136, 0.6) !important;
+    color: var(--ink-primary) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    min-height: 40px !important;
+    padding: 0.45rem 0.9rem !important;
+    box-shadow: 0 1px 2px rgba(20, 20, 19, 0.04) !important;
+    transition: all 0.16s ease !important;
 }
 
-[data-testid="stButton"] > button[kind="primary"], [data-testid="stDownloadButton"] > button[kind="primary"] {
-    background: linear-gradient(135deg, #00FF88 0%, #B6FF3C 130%) !important;
-    color: #02120A !important;
-    border: 1px solid rgba(255, 255, 255, 0.5) !important;
-    font-weight: 700 !important;
+[data-testid="stButton"] > button p,
+[data-testid="stDownloadButton"] > button p {
+    color: var(--ink-primary) !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+}
+
+[data-testid="stButton"] > button:hover,
+[data-testid="stDownloadButton"] > button:hover {
+    background: var(--surface-subtle) !important;
+    border-color: rgba(20, 20, 19, 0.28) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(20, 20, 19, 0.06) !important;
+}
+
+/* Primary Charcoal Pill Button (Woday CTA Style) */
+[data-testid="stButton"] > button[kind="primary"],
+[data-testid="stDownloadButton"] > button[kind="primary"] {
+    background: var(--ink-primary) !important;
+    color: #FFFFFF !important;
+    border: 1px solid var(--ink-primary) !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
     min-height: 44px !important;
-    box-shadow: 0 0 28px -5px rgba(0, 255, 136, 0.65) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                0 8px 20px -6px rgba(20, 20, 19, 0.35) !important;
 }
+
 [data-testid="stButton"] > button[kind="primary"] p,
 [data-testid="stButton"] > button[kind="primary"] span,
 [data-testid="stDownloadButton"] > button[kind="primary"] p,
 [data-testid="stDownloadButton"] > button[kind="primary"] span {
-    color: #02120A !important;
-    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
 }
 
-/* Tabs */
-[data-baseweb="tab-list"] {
-    gap: 6px !important;
-    border-bottom: 1px solid rgba(0, 255, 136, 0.16) !important;
-    padding-bottom: 8px !important;
+[data-testid="stButton"] > button[kind="primary"]:hover,
+[data-testid="stDownloadButton"] > button[kind="primary"]:hover {
+    background: #272725 !important;
+    border-color: #272725 !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25),
+                0 12px 24px -6px rgba(20, 20, 19, 0.45) !important;
 }
+
+/* ---------- macOS Segmented Pill Tabs ---------- */
+[data-baseweb="tab-list"] {
+    background: var(--surface-subtle) !important;
+    padding: 4px !important;
+    border-radius: 12px !important;
+    gap: 4px !important;
+    border-bottom: none !important;
+    width: fit-content !important;
+    margin-bottom: 0.4rem !important;
+}
+
 button[data-baseweb="tab"] {
-    font-size: 0.79rem !important;
-    color: var(--text-mid) !important;
-    padding: 0.45rem 0.9rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    color: var(--ink-secondary) !important;
+    padding: 0.4rem 0.95rem !important;
     border-radius: 9px !important;
     background: transparent !important;
+    border: none !important;
+    margin: 0 !important;
 }
+
 button[data-baseweb="tab"][aria-selected="true"] {
-    color: #00FF88 !important;
-    background: rgba(0, 255, 136, 0.12) !important;
-    border: 1px solid rgba(0, 255, 136, 0.38) !important;
+    background: #FFFFFF !important;
+    color: var(--ink-primary) !important;
+    box-shadow: 0 2px 6px rgba(20, 20, 19, 0.08) !important;
 }
+
 button[data-baseweb="tab"][aria-selected="true"] p {
-    color: #00FF88 !important;
+    color: var(--ink-primary) !important;
     font-weight: 600 !important;
 }
-[data-baseweb="tab-highlight"], [data-baseweb="tab-border"] { display: none !important; }
 
-[data-testid="stImage"] img {
-    border-radius: 10px !important;
-    border: 1px solid rgba(0, 255, 136, 0.25) !important;
-    box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.85);
+[data-baseweb="tab-highlight"],
+[data-baseweb="tab-border"] {
+    display: none !important;
 }
 
-hr { border-color: rgba(0, 255, 136, 0.14) !important; margin: 0.5rem 0 !important; }
+/* ---------- Slide Images & Code Blocks ---------- */
+[data-testid="stImage"] img {
+    border-radius: 12px !important;
+    border: 1px solid var(--border-strong) !important;
+    box-shadow: 0 8px 20px -8px rgba(20, 20, 19, 0.12) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
 
+[data-testid="stImage"] img:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px -8px rgba(20, 20, 19, 0.18) !important;
+}
+
+[data-testid="stCode"],
+[data-testid="stCodeBlock"],
+pre {
+    background: var(--surface-subtle) !important;
+    border: 1px solid var(--border-hairline) !important;
+    border-radius: 12px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.82rem !important;
+    color: var(--ink-primary) !important;
+}
+
+hr {
+    border-color: var(--border-hairline) !important;
+    margin: 0.65rem 0 !important;
+}
+
+/* ---------- Mobile Responsiveness ---------- */
 @media (max-width: 768px) {
-    .block-container { padding: 0.65rem 0.75rem 1.75rem 0.75rem !important; }
-    .brand-sub { display: none !important; }
-    .hero-title { font-size: 1.8rem; }
+    .block-container {
+        padding: 0.75rem 0.85rem 2rem 0.85rem !important;
+    }
+    .woday-brand-tag {
+        display: none !important;
+    }
+    .hero-headline {
+        font-size: 1.75rem;
+    }
+    .hero-subtitle {
+        font-size: 0.86rem;
+    }
+    [data-baseweb="tab-list"] {
+        width: 100% !important;
+        overflow-x: auto !important;
+    }
 }
 </style>
 """
 
-st.markdown(STUDIO_CSS, unsafe_allow_html=True)
+st.markdown(WODAY_CLEAN_CSS, unsafe_allow_html=True)
 
 
 # =====================================================================
@@ -370,51 +596,68 @@ if not default_api_key:
 
 
 # =====================================================================
-# TOP NAVBAR + NIWNOTES HERO
+# TOP FLOATING macOS NAVBAR + CLEAN EDITORIAL HERO
 # =====================================================================
-speed_badge = (
-    f"LAST RENDER: {st.session_state.last_render_sec:.1f}S"
+speed_label = (
+    f"Rendered in {st.session_state.last_render_sec:.1f}s"
     if st.session_state.last_render_sec
-    else "PARALLEL ENGINE // 4X FASTER"
+    else "Parallel Engine Ready"
 )
 
 st.markdown(
     f"""
-    <div class="studio-navbar">
-        <div class="nav-brand">
-            <div class="brand-mark"></div>
-            <span class="brand-title">NIWNOTES</span>
-            <span style="color:rgba(255,255,255,0.2);">/</span>
-            <span class="brand-sub">University Social Learning &amp; Study Carousel Studio</span>
-        </div>
-        <div class="nav-meta">
-            <span class="live">&#9679; {speed_badge}</span>
-            <span>8 SUBJECT TRACKS // 4 TEMPLATES</span>
+    <div class="woday-nav-wrap">
+        <div class="woday-navbar">
+            <div class="woday-brand">
+                <div class="woday-logo-icon">N</div>
+                <span class="woday-brand-name">NIWNOTES</span>
+                <span class="woday-brand-tag">University Study Studio</span>
+            </div>
+            <div class="woday-nav-pills">
+                <span class="status-pill">
+                    <span class="status-dot"></span>
+                    {speed_label}
+                </span>
+                <span class="status-pill">8 Campus Tracks</span>
+                <span class="status-pill">4 Note Styles</span>
+            </div>
         </div>
     </div>
-    <div class="hero">
-        <div>
-            <span class="section-label">NIWNOTES // CAMPUS KNOWLEDGE TO SOCIAL CAROUSELS</span>
-            <div class="hero-title">Turn university lectures into <span class="outline">viral notes.</span></div>
+
+    <div class="woday-hero">
+        <div class="hero-badge">
+            <span class="hero-badge-dot"></span>
+            <span>All-in-One University Study Notes &amp; Social Carousel Maker</span>
         </div>
-        <p class="hero-sub">Select your university subject track, discover trending topics or type your lecture concept, pick a note template, and export a 5-slide teaching post.</p>
+        <h1 class="hero-headline">Your campus lectures, turned into clear visual notes.</h1>
+        <p class="hero-subtitle">
+            Pick your university discipline, discover trending topics or type any lecture concept, and generate a 5-page handwritten study post in seconds.
+        </p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 # =====================================================================
-# 2-PANE WORKSPACE
+# 2-PANE BENTO WORKSPACE
 # =====================================================================
-left_pane, right_pane = st.columns([1.08, 2.22], gap="medium")
+left_pane, right_pane = st.columns([1.05, 2.25], gap="medium")
 
 with left_pane:
     with st.container(border=True):
         st.markdown(
             """
+            <div class="macos-window-bar">
+                <div class="traffic-lights">
+                    <span class="tl-dot tl-red"></span>
+                    <span class="tl-dot tl-yellow"></span>
+                    <span class="tl-dot tl-green"></span>
+                </div>
+                <span class="window-label">composer.niwnotes</span>
+            </div>
             <div>
-                <span class="section-label">01 // UNIVERSITY SUBJECT &amp; TOPIC</span>
-                <div class="panel-heading">Campus Track &amp; Discovery</div>
+                <span class="card-step-pill">Step 01 · Academic Track</span>
+                <div class="card-title">Subject &amp; Topic Discovery</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -422,31 +665,29 @@ with left_pane:
 
         subject_list = list(UNIVERSITY_SUBJECTS.keys())
         selected_subject = st.selectbox(
-            "Select Your University Subject Category",
+            "University Subject Discipline",
             options=subject_list,
             index=0,
         )
 
         input_mode = st.selectbox(
-            "Topic Selection Mode",
+            "Topic Source",
             options=[
-                "Manual Lecture / Exam Topic Entry",
-                "Scan Trending Topics for this Subject",
+                "Type Lecture / Exam Topic Manually",
+                "Discover Trending Topics for this Subject",
             ],
             index=0,
         )
 
-        if input_mode == "Scan Trending Topics for this Subject":
+        if input_mode == "Discover Trending Topics for this Subject":
             if st.button(
-                f"Scan Trending {selected_subject.split('&')[0].strip()} Topics",
+                f"Find Trending {selected_subject.split('&')[0].strip()} Topics",
                 use_container_width=True,
             ):
                 if not default_api_key:
                     st.error("Please enter your Gemini API Key below first.")
                 else:
-                    with st.spinner(
-                        f"Scanning live feeds for {selected_subject}..."
-                    ):
+                    with st.spinner(f"Scanning live feeds for {selected_subject}..."):
                         st.session_state.viral_topics = cached_discover_topics(
                             default_api_key, selected_subject
                         )
@@ -454,7 +695,7 @@ with left_pane:
             if st.session_state.viral_topics:
                 topic_titles = [t.topic_title for t in st.session_state.viral_topics]
                 final_topic = st.selectbox(
-                    "Choose a Trending Study Topic", options=topic_titles
+                    "Select a Trending Topic", options=topic_titles
                 )
                 matched = next(
                     (
@@ -465,7 +706,7 @@ with left_pane:
                     None,
                 )
                 if matched:
-                    st.caption(f"Why learn this: {matched.why_it_is_viral}")
+                    st.caption(f"Why it matters: {matched.why_it_is_viral}")
             else:
                 final_topic = st.text_input(
                     "Or Enter Topic Directly",
@@ -483,7 +724,7 @@ with left_pane:
                 "UI/UX & Product Engineering": "Design Tokens & Atomic Design System Architecture",
             }
             final_topic = st.text_input(
-                "Enter Lecture Concept or Technical Topic",
+                "Lecture Concept or Technical Topic",
                 value=default_examples.get(selected_subject, "What is RAG in AI?"),
             )
 
@@ -492,8 +733,8 @@ with left_pane:
         st.markdown(
             """
             <div>
-                <span class="section-label">02 // VISUAL TEMPLATE &amp; LANGUAGE</span>
-                <div class="panel-heading">Note Style &amp; Branding</div>
+                <span class="card-step-pill">Step 02 · Note Aesthetics</span>
+                <div class="card-title">Template &amp; Language</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -501,21 +742,21 @@ with left_pane:
 
         template_keys = list(NOTE_TEMPLATES.keys())
         selected_template = st.selectbox(
-            "Choose Handwritten Note Template",
+            "Notebook Paper Template",
             options=template_keys,
-            format_func=lambda k: f"{NOTE_TEMPLATES[k]['name']} ({NOTE_TEMPLATES[k]['badge']})",
+            format_func=lambda k: f"{NOTE_TEMPLATES[k]['name']} — {NOTE_TEMPLATES[k]['badge']}",
             index=0,
         )
 
         t_meta = NOTE_TEMPLATES[selected_template]
         st.markdown(
             f"""
-            <div class="template-preview-bar">
-                <span>STYLE: {t_meta['name'].upper()}</span>
-                <div class="swatch-group">
-                    <span class="swatch-dot" style="background:{t_meta['paper_bg']};"></span>
-                    <span class="swatch-dot" style="background:{t_meta['ink_blue']};"></span>
-                    <span class="swatch-dot" style="background:{t_meta['ink_red']};"></span>
+            <div class="template-card-bar">
+                <span>{t_meta['name']}</span>
+                <div class="swatch-row">
+                    <span class="swatch-chip" style="background:{t_meta['paper_bg']};"></span>
+                    <span class="swatch-chip" style="background:{t_meta['ink_blue']};"></span>
+                    <span class="swatch-chip" style="background:{t_meta['ink_red']};"></span>
                 </div>
             </div>
             """,
@@ -536,7 +777,7 @@ with left_pane:
                 "Sinhala_Mix" if "Sinhala" in lang_choice else "English"
             )
         with col_author:
-            author_handle = st.text_input("Creator Handle", value="@NIWNOTES")
+            author_handle = st.text_input("Author Handle", value="@NIWNOTES")
 
         if not default_api_key:
             api_key_input = st.text_input("Gemini API Key", type="password")
@@ -544,7 +785,7 @@ with left_pane:
             api_key_input = default_api_key
 
         generate_btn = st.button(
-            "Generate 5-Page NIWNOTES Post",
+            "Create 5-Page Study Carousel",
             type="primary",
             use_container_width=True,
         )
@@ -563,10 +804,10 @@ with left_pane:
                 out_dir = os.path.join("output", safe_folder)
 
                 with st.status(
-                    "Running Parallel NIWNOTES Pipeline...", expanded=True
+                    "Creating your 5-page NIWNOTES study post...", expanded=True
                 ) as status:
                     st.write(
-                        f"1/2 Synthesizing 5-page {selected_subject} curriculum..."
+                        f"1/2 Writing {selected_subject} study guide..."
                     )
                     guide = generate_5_page_study_guide(
                         topic=final_topic,
@@ -575,7 +816,7 @@ with left_pane:
                         subject_category=selected_subject,
                     )
                     st.write(
-                        f"2/2 Parallel rendering 5 slides ({t_meta['name']})..."
+                        f"2/2 Rendering 5 slides in parallel ({t_meta['name']})..."
                     )
                     img_paths = render_all_pages(
                         guide=guide,
@@ -593,15 +834,29 @@ with left_pane:
                     st.session_state.image_paths = img_paths
                     st.session_state.social_caption = guide.social_caption
                     status.update(
-                        label=f"Completed in {elapsed:.1f}s!", state="complete"
+                        label=f"Ready in {elapsed:.1f}s!", state="complete"
                     )
                 st.rerun()
 
 # =====================================================================
-# RIGHT PANE: LIVE CAROUSEL CANVAS & EXPORT
+# RIGHT PANE: macOS PREVIEW CANVAS & EXPORT
 # =====================================================================
 with right_pane:
     with st.container(border=True):
+        st.markdown(
+            """
+            <div class="macos-window-bar">
+                <div class="traffic-lights">
+                    <span class="tl-dot tl-red"></span>
+                    <span class="tl-dot tl-yellow"></span>
+                    <span class="tl-dot tl-green"></span>
+                </div>
+                <span class="window-label">preview — 1000×1250px (4:5 Social Portrait)</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         if st.session_state.image_paths:
             img_paths = st.session_state.image_paths
             caption_text = st.session_state.social_caption
@@ -616,20 +871,20 @@ with right_pane:
                     zf.writestr("caption.txt", caption_text)
             zip_buffer.seek(0)
 
-            top_l, top_r = st.columns([2.1, 1.0], vertical_alignment="center")
+            top_l, top_r = st.columns([2.15, 0.95], vertical_alignment="center")
             with top_l:
                 st.markdown(
                     f"""
                     <div>
-                        <span class="section-label">NIWNOTES WORKSPACE // 5-SLIDE SOCIAL POST</span>
-                        <div class="workspace-title">{topic_title}</div>
+                        <span class="card-step-pill">Active Study Deck · 5 Slides</span>
+                        <div class="card-title" style="font-size:1.4rem;">{topic_title}</div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
             with top_r:
                 st.download_button(
-                    label="Download All 5 Slides (.ZIP)",
+                    label="Download Bundle (.ZIP)",
                     data=zip_buffer,
                     file_name="niwnotes_study_carousel.zip",
                     mime="application/zip",
@@ -639,9 +894,9 @@ with right_pane:
 
             tab_grid, tab_inspect, tab_copy = st.tabs(
                 [
-                    "5-Slide Carousel Grid",
-                    "Full-Size Slide Inspector",
-                    "Social Media Caption",
+                    "5-Slide Overview",
+                    "Large Slide Reader",
+                    "Social Post Copy",
                 ]
             )
 
@@ -663,7 +918,7 @@ with right_pane:
 
             with tab_inspect:
                 slide_num = st.selectbox(
-                    "Select Slide to Inspect in High Resolution",
+                    "Choose Slide to Read",
                     options=[1, 2, 3, 4, 5],
                     format_func=lambda x: f"Slide 0{x} of 05",
                 )
@@ -675,7 +930,7 @@ with right_pane:
 
             with tab_copy:
                 st.markdown(
-                    '<span class="section-label">READY-TO-POST LINKEDIN &amp; FACEBOOK CAPTION (CLICK COPY ICON)</span>',
+                    '<span class="card-step-pill">LinkedIn &amp; Facebook Caption (Click top-right icon to copy)</span>',
                     unsafe_allow_html=True,
                 )
                 st.code(caption_text, language="markdown")
@@ -683,13 +938,16 @@ with right_pane:
             st.markdown(
                 """
                 <div style="padding: 4.5rem 1.5rem; text-align: center;">
-                    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:3.2rem;
-                                color:transparent;-webkit-text-stroke:1.5px rgba(0,255,136,0.55);margin-bottom:1rem;">
-                        NIWNOTES
+                    <div style="width:48px;height:48px;border-radius:14px;background:#F3F2EE;color:#141413;
+                                display:inline-flex;align-items:center;justify-content:center;
+                                font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.3rem;margin-bottom:0.9rem;">
+                        N
                     </div>
-                    <div class="section-label" style="margin-bottom:0.5rem;">NO STUDY CAROUSEL LOADED</div>
-                    <div style="font-size: 0.9rem; color: rgba(214,255,232,0.65); max-width: 440px; margin: 0 auto;">
-                        Select your university subject track and template on the left panel, then click <b style="color:#00FF88;">Generate 5-Page NIWNOTES Post</b>.
+                    <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1.25rem;color:#141413;margin-bottom:0.35rem;">
+                        No study deck in workspace yet
+                    </div>
+                    <div style="font-size: 0.9rem; color: #575653; max-width: 420px; margin: 0 auto;">
+                        Select your university subject and notebook style on the left, then click <b>Create 5-Page Study Carousel</b>.
                     </div>
                 </div>
                 """,
