@@ -30,7 +30,7 @@ class TrendingTopicsList(BaseModel):
 # =====================================================================
 UNIVERSITY_SUBJECTS: Dict[str, Dict[str, Any]] = {
     "AI & Machine Learning": {
-        "icon": "🧠",
+        "code": "AI",
         "hn_query": "LLM OR AI agent OR transformer OR RAG",
         "devto_tag": "ai",
         "use_hf": True,
@@ -68,7 +68,7 @@ UNIVERSITY_SUBJECTS: Dict[str, Dict[str, Any]] = {
         ],
     },
     "Software Engineering & Full-Stack": {
-        "icon": "💻",
+        "code": "SE",
         "hn_query": "software architecture OR microservices OR react OR backend",
         "devto_tag": "webdev",
         "use_hf": False,
@@ -106,7 +106,7 @@ UNIVERSITY_SUBJECTS: Dict[str, Dict[str, Any]] = {
         ],
     },
     "Cybersecurity & Ethical Hacking": {
-        "icon": "🛡️",
+        "code": "SEC",
         "hn_query": "cybersecurity OR zero-day OR cryptography OR OWASP",
         "devto_tag": "security",
         "use_hf": False,
@@ -144,7 +144,7 @@ UNIVERSITY_SUBJECTS: Dict[str, Dict[str, Any]] = {
         ],
     },
     "Data Science & Big Data Analytics": {
-        "icon": "📊",
+        "code": "DS",
         "hn_query": "data science OR apache spark OR duckdb OR data engineering",
         "devto_tag": "datascience",
         "use_hf": False,
@@ -182,7 +182,7 @@ UNIVERSITY_SUBJECTS: Dict[str, Dict[str, Any]] = {
         ],
     },
     "Cloud Computing & DevOps": {
-        "icon": "☁️",
+        "code": "CLD",
         "hn_query": "kubernetes OR docker OR terraform OR devops OR cloud native",
         "devto_tag": "devops",
         "use_hf": False,
@@ -220,7 +220,7 @@ UNIVERSITY_SUBJECTS: Dict[str, Dict[str, Any]] = {
         ],
     },
     "Computer Networks & Distributed Systems": {
-        "icon": "🌐",
+        "code": "NET",
         "hn_query": "distributed systems OR consensus OR raft OR TCP QUIC",
         "devto_tag": "architecture",
         "use_hf": False,
@@ -258,7 +258,7 @@ UNIVERSITY_SUBJECTS: Dict[str, Dict[str, Any]] = {
         ],
     },
     "IoT, Robotics & Embedded Systems": {
-        "icon": "🤖",
+        "code": "IOT",
         "hn_query": "embedded systems OR RTOS OR robotics OR ESP32 OR MQTT",
         "devto_tag": "iot",
         "use_hf": False,
@@ -296,7 +296,7 @@ UNIVERSITY_SUBJECTS: Dict[str, Dict[str, Any]] = {
         ],
     },
     "UI/UX & Product Engineering": {
-        "icon": "🎨",
+        "code": "UX",
         "hn_query": "design systems OR UX research OR frontend accessibility OR product design",
         "devto_tag": "design",
         "use_hf": False,
@@ -356,7 +356,6 @@ def get_working_models(api_key: str) -> List[str]:
     """
     client = get_genai_client(api_key)
 
-    # Prioritized from fastest (flash-lite) to standard flash
     preferred_order = [
         "gemini-2.5-flash-lite",
         "gemini-3.5-flash-lite",
@@ -484,7 +483,7 @@ def discover_viral_topics(
 
     Select and synthesize the TOP 5 most valuable, exam-relevant, and career-boosting topics for university students to turn into visual study notes and share on LinkedIn/Facebook.
     Rank them from #1 (most impactful right now) to #5.
-    Make the titles crystal clear, academic yet engaging, and educational.
+    Make the titles crystal clear, academic yet engaging, and educational. Do not use any emojis.
     """
 
     for model_name in working_models:

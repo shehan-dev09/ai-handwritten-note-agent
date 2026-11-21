@@ -37,7 +37,7 @@ NOTE_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "cornell_layout": False,
     },
     "dark_neon": {
-        "name": "Dark Mode iPad GoodNotes",
+        "name": "Obsidian Dark",
         "badge": "Dark Dot-Grid",
         "description": "Deep slate iPad canvas with subtle dot-grid and glowing cyan & violet ink.",
         "paper_bg": "#0F172A",
@@ -60,7 +60,7 @@ NOTE_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "cornell_layout": False,
     },
     "blueprint_grid": {
-        "name": "Engineering Math Grid",
+        "name": "Blueprint Grid",
         "badge": "5mm Square Grid",
         "description": "Crisp white engineering graph paper with cobalt blue ink and teal accents.",
         "paper_bg": "#F8FAFC",
@@ -86,7 +86,7 @@ NOTE_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "cornell_layout": False,
     },
     "cornell_academic": {
-        "name": "University Cornell System",
+        "name": "Cornell Exam",
         "badge": "Exam Revision Sheet",
         "description": "Structured academic paper with top header bar, emerald ink, and summary block.",
         "paper_bg": "#FFFDF9",
@@ -116,29 +116,29 @@ NOTE_TEMPLATES: Dict[str, Dict[str, Any]] = {
 # =====================================================================
 class DiagramStep(BaseModel):
     step_num: str = Field(description="Step number like '01', '02', '03'")
-    label: str = Field(description="Short title of this step (2-4 words in English)")
-    detail: str = Field(description="Concise 1-line explanation of what happens in this step")
+    label: str = Field(description="Short title of this step (2-4 words in English, no emojis)")
+    detail: str = Field(description="Concise 1-line explanation of what happens in this step (no emojis)")
 
 
 class NotePage(BaseModel):
     page_number: int = Field(description="Page number")
-    title: str = Field(description="Big handwritten header title for the page")
-    subtitle: str = Field(description="Short 1-line subtitle explaining the core focus")
+    title: str = Field(description="Big handwritten header title for the page (no emojis)")
+    subtitle: str = Field(description="Short 1-line subtitle explaining the core focus (no emojis)")
     key_points: List[str] = Field(
-        description="3 or 4 bullet points. Keep each bullet concise (max 18 words) and wrap 1-2 key terms in <hl>tags</hl>."
+        description="3 or 4 bullet points. Keep each bullet concise (max 18 words), wrap 1-2 key terms in <hl>tags</hl>, and do not use emojis."
     )
-    diagram_title: str = Field(description="Title of the visual workflow diagram box on this page")
+    diagram_title: str = Field(description="Title of the visual workflow diagram box on this page (no emojis)")
     diagram_steps: List[DiagramStep] = Field(
         description="3 or 4 sequential steps for the visual architecture/flowchart diagram"
     )
-    pro_tip: str = Field(description="A short exam tip, memory trick, or real-world takeaway for the sticky note")
-    footer_tag: str = Field(description="Short category tag for the bottom right")
+    pro_tip: str = Field(description="A short exam tip, memory trick, or real-world takeaway (no emojis)")
+    footer_tag: str = Field(description="Short category tag for the bottom right (no emojis)")
 
 
 class BatchSlideDeckWithCaption(BaseModel):
     pages: List[NotePage] = Field(description="Exactly 5 sequential pages for this study module")
     linkedin_caption: str = Field(
-        description="Engaging LinkedIn/Facebook study post caption in the requested language"
+        description="Engaging LinkedIn/Facebook study post caption in the requested language without any emojis"
     )
     hashtags: List[str] = Field(description="5-8 relevant university and tech hashtags")
 
@@ -200,8 +200,8 @@ MODULE_OUTLINES = [
     {
         "module_name": "Module 5: Case Studies, Hands-On Patterns & Debugging",
         "slides": [
-            "Slide 21: Industry Case Study #1 — How Top Tech Teams Implement This",
-            "Slide 22: Industry Case Study #2 — Scaling Challenges & Lessons Learned",
+            "Slide 21: Industry Case Study #1 - How Top Tech Teams Implement This",
+            "Slide 22: Industry Case Study #2 - Scaling Challenges & Lessons Learned",
             "Slide 23: Clean Implementation Blueprint & Design Pattern Breakdown",
             "Slide 24: Common Anti-Patterns, Bugs & How to Troubleshoot Them Fast",
             "Slide 25: Practical Lab / Project Implementation Roadmap for Students",
@@ -224,28 +224,30 @@ def _build_language_instructions(language: str, include_caption: bool = True) ->
     """Builds natural language instructions for both the note slides and the social caption."""
     if language == "Sinhala_Mix":
         caption_rule = (
-            "- **SOCIAL CAPTION LANGUAGE (MUST MATCH)**: Write `linkedin_caption` in the EXACT SAME natural Sri Lankan university 'Kuppiya' Sinhala Unicode + English technical mix so students can post it directly on LinkedIn or Facebook!"
+            "- **SOCIAL CAPTION LANGUAGE (MUST MATCH)**: Write `linkedin_caption` in the EXACT SAME natural Sri Lankan university 'Kuppiya' Sinhala Unicode + English technical mix. Do NOT use any emojis."
             if include_caption
             else ""
         )
         return f"""
         LANGUAGE STYLE: NATURAL SRI LANKAN UNIVERSITY "KUPPIYA" SINHALA + ENGLISH TECH MIX:
-        - Write explanations in natural, conversational Sri Lankan university student Sinhala (Unicode script) mixed seamlessly with English technical keywords—exactly how a top senior student explains a tough lecture in a campus 'Kuppiya' study session!
+        - Write explanations in natural, conversational Sri Lankan university student Sinhala (Unicode script) mixed seamlessly with English technical keywords-exactly how a top senior student explains a tough lecture in a campus 'Kuppiya' study session.
         - NEVER translate technical terms into awkward dictionary Sinhala. Keep ALL technical terms, acronyms, data structures, protocols, and action verbs in English (e.g., 'Database Indexing', 'API Gateway', 'Backpropagation', 'Latency', 'Cache Miss', 'Deadlock', 'Container').
         - Example good bullet style: "<hl>RAG Architecture</hl> එකෙන් වෙන්නේ LLM එකට අපේම Private PDF හෝ Database එකක තියෙන නිවැරදි data දීලා <hl>Hallucinations</hl> නැති කරන එකයි."
         - Example good bullet style: "සරලවම කිව්වොත් <hl>Load Balancer</hl> එකෙන් කරන්නේ එකම Server එකට එන ලොකු Traffic එක Servers කිහිපයක් අතරේ සමානව බෙදලා <hl>High Availability</hl> තියාගන්න එකයි."
         - Keep main `title`, `diagram_title`, and `diagram_steps.label` in clear English, while `subtitle`, `key_points`, `diagram_steps.detail`, and `pro_tip` use this natural Sinhala + English Kuppiya mix.
+        - STRICT RULE: Do NOT include any emojis anywhere in the slides or caption.
         {caption_rule}
         """
     else:
         caption_rule = (
-            "- **SOCIAL CAPTION LANGUAGE (MUST MATCH)**: Write `linkedin_caption` in 100% professional, engaging English tailored for LinkedIn and Facebook tech communities."
+            "- **SOCIAL CAPTION LANGUAGE (MUST MATCH)**: Write `linkedin_caption` in 100% professional, engaging English tailored for LinkedIn and Facebook tech communities. Do NOT use any emojis."
             if include_caption
             else ""
         )
         return f"""
         LANGUAGE STYLE: 100% CRISP ACADEMIC & PROFESSIONAL ENGLISH:
         - Write all titles, subtitles, bullet points, diagram steps, and pro-tips in clear, high-impact English suitable for university revision and global tech portfolios.
+        - STRICT RULE: Do NOT include any emojis anywhere in the slides or caption.
         {caption_rule}
         """
 
@@ -278,11 +280,11 @@ def _generate_batch_of_5(
     Formatting Rules for High-Speed Sketchnotes:
     1. Generate EXACTLY 5 pages numbered {start_page} through {end_page}:
     {slides_plan}
-    2. In `key_points` (3 or 4 bullets per page, max 18 words per bullet), wrap 1 or 2 core technical phrases per bullet inside `<hl>...</hl>` tags so they get a yellow marker highlight.
+    2. In `key_points` (3 or 4 bullets per page, max 18 words per bullet), wrap 1 or 2 core technical phrases per bullet inside `<hl>...</hl>` tags so they get a marker highlight.
     3. Keep `diagram_steps` (3 or 4 steps per page) concise: `label` should be 2-4 words in English, and `detail` should be a 1-sentence explanation.
+    4. Do NOT output any emojis in any field.
     """
 
-    # Rotate starting model across batches so parallel 10/30-page runs spread quota load
     num_models = len(working_models)
     ordered_models = [working_models[(batch_index + i) % num_models] for i in range(num_models)]
 
@@ -354,7 +356,6 @@ def generate_5_page_study_guide(
             hashtags=batch_res["hashtags"],
         )
 
-    # Parallel multi-batch execution for 10-page (2 batches) and 30-page (6 batches) decks
     batch_results: Dict[int, Dict[str, Any]] = {}
     with ThreadPoolExecutor(max_workers=min(num_batches, 6)) as executor:
         future_map = {
@@ -535,10 +536,12 @@ def _get_template_css(t: Dict[str, Any]) -> str:
             line-height: 1.4;
             color: {t["text_color"]};
         }}
-        .niw-bullet-star {{
+        .niw-bullet-marker {{
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
             color: {t["secondary_accent"]};
-            font-size: 24px;
-            line-height: 1.2;
+            font-size: 20px;
+            line-height: 1.35;
             flex-shrink: 0;
         }}
         .hl {{
@@ -616,7 +619,8 @@ def _get_template_css(t: Dict[str, Any]) -> str:
         }}
         .niw-step-arrow {{
             text-align: center;
-            font-size: 18px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
             line-height: 0.9;
             color: {t["secondary_accent"]};
             font-weight: 700;
@@ -637,8 +641,14 @@ def _get_template_css(t: Dict[str, Any]) -> str:
             transform: rotate(-0.35deg);
             margin-bottom: 12px;
         }}
-        .niw-bulb {{
-            font-size: 28px;
+        .niw-tip-badge {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 800;
+            background: {t["pro_tip_border"]};
+            color: #FFFFFF;
+            padding: 4px 9px;
+            border-radius: 6px;
             flex-shrink: 0;
         }}
         .niw-pro-tip-text {{
@@ -668,7 +678,7 @@ def _build_page_inner_html(
     template_id: str,
     element_id: str,
 ) -> str:
-    """Builds the inner `<div class="niw-page">` markup for a single slide."""
+    """Builds the inner `<div class="niw-page">` markup for a single slide without emojis."""
     t = NOTE_TEMPLATES.get(template_id, NOTE_TEMPLATES["classic_cream"])
 
     bullets_html = ""
@@ -676,7 +686,7 @@ def _build_page_inner_html(
         formatted_pt = _format_highlight(pt)
         bullets_html += f"""
         <div class="niw-point-item">
-            <div class="niw-bullet-star">★</div>
+            <div class="niw-bullet-marker">&gt;</div>
             <div class="niw-point-text">{formatted_pt}</div>
         </div>
         """
@@ -684,7 +694,7 @@ def _build_page_inner_html(
     steps_html = ""
     steps_slice = page.diagram_steps[:4]
     for idx, step in enumerate(steps_slice):
-        arrow_html = '<div class="niw-step-arrow">↓</div>' if idx < len(steps_slice) - 1 else ""
+        arrow_html = '<div class="niw-step-arrow">|</div>' if idx < len(steps_slice) - 1 else ""
         steps_html += f"""
         <div class="niw-step-row">
             <div class="niw-step-badge">{step.step_num}</div>
@@ -704,7 +714,7 @@ def _build_page_inner_html(
     if t["cornell_layout"]:
         cornell_header = f"""
         <div class="niw-cornell-banner">
-            <div>CORNELL REVISION SYSTEM • NIWNOTES</div>
+            <div>CORNELL REVISION SYSTEM // NIWNOTES</div>
             <div>MODULE SHEET {page.page_number} OF {total_pages}</div>
         </div>
         """
@@ -715,7 +725,7 @@ def _build_page_inner_html(
         <div class="niw-top-section">
             {cornell_header}
             <div class="niw-meta-bar">
-                <div class="niw-topic-pill">📚 {topic[:62]}</div>
+                <div class="niw-topic-pill">TOPIC // {topic[:62]}</div>
                 <div class="niw-page-badge">Page {page.page_number} / {total_pages}</div>
             </div>
             <div class="niw-title">{page.title}</div>
@@ -726,7 +736,7 @@ def _build_page_inner_html(
         </div>
 
         <div class="niw-diagram-card">
-            <div class="niw-diagram-header">⚡ {page.diagram_title}</div>
+            <div class="niw-diagram-header">FLOW // {page.diagram_title}</div>
             <div class="niw-steps-container">
                 {steps_html}
             </div>
@@ -734,12 +744,12 @@ def _build_page_inner_html(
 
         <div class="niw-bottom-section">
             <div class="niw-pro-tip-box">
-                <div class="niw-bulb">💡</div>
+                <div class="niw-tip-badge">NOTE</div>
                 <div class="niw-pro-tip-text"><strong>Key Takeaway:</strong> {_format_highlight(page.pro_tip)}</div>
             </div>
             <div class="niw-footer">
-                <div>📌 NIWNOTES • UNIVERSITY SOCIAL LEARNING</div>
-                <div>#{page.footer_tag.replace(" ", "")} • Swipe ➔</div>
+                <div>NIWNOTES // UNIVERSITY SOCIAL LEARNING</div>
+                <div>#{page.footer_tag.replace(" ", "")} // Next -&gt;</div>
             </div>
         </div>
     </div>
@@ -754,11 +764,7 @@ def build_interactive_studio_html(
     language: str = "Sinhala_Mix",
 ) -> str:
     """
-    Builds a self-contained, zero-wait Woday-styled Interactive Studio HTML component.
-    - Renders all 5, 10, or 30 slides LIVE in the browser with 0ms server wait.
-    - Provides instant client-side slide switching (0ms).
-    - Exports crisp 1000x1250 PNGs and full .ZIP bundles directly via browser GPU (html-to-image + JSZip).
-    - Provides 1-click clipboard copy for the LinkedIn/Facebook caption.
+    Builds a self-contained, zero-wait Woday-styled Interactive Studio HTML component without emojis.
     """
     t = NOTE_TEMPLATES.get(template_id, NOTE_TEMPLATES["classic_cream"])
     page_css = _get_template_css(t)
@@ -768,9 +774,8 @@ def build_interactive_studio_html(
         [f"#{h.strip('#')}" for h in carousel_data.hashtags]
     )
     caption_json = json.dumps(full_caption)
-    lang_label = "🇱🇰 Sinhala + English Kuppiya" if language == "Sinhala_Mix" else "🇬🇧 100% English"
+    lang_label = "SI/EN Kuppiya Mix" if language == "Sinhala_Mix" else "100% Academic English"
 
-    # Build thumbnail cards and hidden full-resolution export targets
     thumbs_html = ""
     inspector_slides_html = ""
 
@@ -1092,22 +1097,22 @@ def build_interactive_studio_html(
         <!-- Top Action Bar -->
         <div class="studio-bar">
             <div class="studio-bar-left">
-                <span class="studio-badge-green">⚡ Instant Live Render</span>
-                <span class="studio-badge-gray">🎨 {t["name"]}</span>
-                <span class="studio-badge-gray">📑 {total_pages} Pages</span>
+                <span class="studio-badge-green">LIVE RENDER</span>
+                <span class="studio-badge-gray">{t["name"]}</span>
+                <span class="studio-badge-gray">{total_pages} Pages</span>
                 <span class="studio-badge-gray">{lang_label}</span>
             </div>
             <div class="studio-actions">
                 <button class="btn-woday-secondary" id="btn-dl-single" onclick="downloadActiveSlide()">
-                    🖼️ Download Current Slide (.PNG)
+                    Download Current Slide (.PNG)
                 </button>
                 <button class="btn-woday-primary" id="btn-dl-zip" onclick="downloadAllSlidesZip()">
-                    📦 Download All {total_pages} Slides (.ZIP)
+                    Download All {total_pages} Slides (.ZIP)
                 </button>
             </div>
         </div>
 
-        <!-- Thumbnail Strip (Click any slide to switch instantly in 0ms) -->
+        <!-- Thumbnail Strip -->
         <div class="studio-thumb-strip">
             {thumbs_html}
         </div>
@@ -1116,9 +1121,9 @@ def build_interactive_studio_html(
         <div class="studio-main-grid">
             <div class="inspector-card">
                 <div class="inspector-toolbar">
-                    <button class="btn-woday-secondary" onclick="stepSlide(-1)">◀ Prev</button>
+                    <button class="btn-woday-secondary" onclick="stepSlide(-1)">Prev</button>
                     <span class="inspector-slide-counter" id="slide-counter-label">Slide 01 / {total_pages:02d}</span>
-                    <button class="btn-woday-secondary" onclick="stepSlide(1)">Next ▶</button>
+                    <button class="btn-woday-secondary" onclick="stepSlide(1)">Next</button>
                 </div>
                 <div class="inspector-viewport">
                     {inspector_slides_html}
@@ -1128,13 +1133,13 @@ def build_interactive_studio_html(
             <div class="caption-card">
                 <div class="caption-header">
                     <div>
-                        <div class="caption-title">💼 LinkedIn & Facebook Study Post</div>
+                        <div class="caption-title">LinkedIn &amp; Facebook Study Post</div>
                         <div style="font-size:12px; color:#575653; margin-top:2px;">
-                            Automatically matched to your selected language ({lang_label})
+                            Matched to selected language ({lang_label})
                         </div>
                     </div>
                     <button class="btn-woday-primary" id="btn-copy-caption" onclick="copyCaption()">
-                        📋 Copy Caption & Hashtags
+                        Copy Caption &amp; Hashtags
                     </button>
                 </div>
 
@@ -1182,7 +1187,7 @@ def build_interactive_studio_html(
             async function downloadActiveSlide() {{
                 const btn = document.getElementById('btn-dl-single');
                 const origText = btn.innerText;
-                btn.innerText = '⏳ Exporting PNG...';
+                btn.innerText = 'Exporting PNG...';
                 try {{
                     await document.fonts.ready;
                     const node = document.getElementById('niw-export-slide-' + activeSlideIndex);
@@ -1196,10 +1201,10 @@ def build_interactive_studio_html(
                     link.download = `NIWNOTES_Slide_${{String(activeSlideIndex + 1).padStart(2, '0')}}.png`;
                     link.href = dataUrl;
                     link.click();
-                    btn.innerText = '✅ Downloaded PNG!';
+                    btn.innerText = 'Downloaded PNG';
                 }} catch (err) {{
                     console.error(err);
-                    btn.innerText = '⚠️ Retry Download';
+                    btn.innerText = 'Retry Download';
                 }}
                 setTimeout(() => {{ btn.innerText = origText; }}, 2000);
             }}
@@ -1211,8 +1216,7 @@ def build_interactive_studio_html(
                     await document.fonts.ready;
                     const zip = new JSZip();
                     for (let i = 0; i < totalSlides; i++) {{
-                        btn.innerText = `⚡ Rendering ${{i + 1}} / ${{totalSlides}}...`;
-                        // Temporarily ensure frame is rendered in DOM for capture
+                        btn.innerText = `Rendering ${{i + 1}} / ${{totalSlides}}...`;
                         const frame = document.getElementById('inspector-frame-' + i);
                         const wasActive = frame.classList.contains('active');
                         if (!wasActive) {{
@@ -1237,16 +1241,16 @@ def build_interactive_studio_html(
                         }}
                     }}
                     zip.file('social_post_caption.txt', document.getElementById('caption-box').value);
-                    btn.innerText = '📦 Packing ZIP...';
+                    btn.innerText = 'Packing ZIP...';
                     const content = await zip.generateAsync({{type: 'blob'}});
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(content);
                     link.download = `NIWNOTES_${{totalSlides}}_Pages_Study_Pack.zip`;
                     link.click();
-                    btn.innerText = '✅ ZIP Downloaded!';
+                    btn.innerText = 'ZIP Downloaded';
                 }} catch (err) {{
                     console.error(err);
-                    btn.innerText = '⚠️ Retry ZIP';
+                    btn.innerText = 'Retry ZIP';
                 }}
                 setTimeout(() => {{ btn.innerText = origText; }}, 2400);
             }}
@@ -1255,8 +1259,8 @@ def build_interactive_studio_html(
                 const btn = document.getElementById('btn-copy-caption');
                 const txt = document.getElementById('caption-box').value;
                 navigator.clipboard.writeText(txt);
-                btn.innerText = '✅ Copied to Clipboard!';
-                setTimeout(() => {{ btn.innerText = '📋 Copy Caption & Hashtags'; }}, 2000);
+                btn.innerText = 'Copied to Clipboard';
+                setTimeout(() => {{ btn.innerText = 'Copy Caption & Hashtags'; }}, 2000);
             }}
         </script>
     </body>
