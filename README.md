@@ -5,6 +5,8 @@
 # 📝 NIWNote Studio
 ### Autonomous Multi-Agent AI Sketchnote & Educational Carousel Engine
 
+<b>Built by <a href="https://www.linkedin.com/in/shehan-nadeesha/">Shehan Nadeesha</a> (AI/ML Engineer)</b><br>
+
 **Transform complex research papers and engineering breakthroughs into photorealistic, human-like handwritten study carousels & viral social media launch copy in seconds — at $0 cost.**
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-handwritten-note-agent.streamlit.app/)
@@ -237,6 +239,13 @@ Preparing for an AI Engineering or Full-Stack portfolio review? Check out our de
 This project is licensed under the **MIT License** — feel free to fork, customize, and build commercial or educational products on top of it.
 
 ---
+
+## 👤 Author
+
+**Shehan Nadeesha**  
+*AI/ML Engineer*  
+🔗 **LinkedIn:** [linkedin.com/in/shehan-nadeesha](https://www.linkedin.com/in/shehan-nadeesha/)  
+🐙 **GitHub:** [github.com/shehannadeesha](https://github.com/shehannadeesha)
 
 <div align="center">
 Made with ❤️ for AI researchers, educators, and university students.
