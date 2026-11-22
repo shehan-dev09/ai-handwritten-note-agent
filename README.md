@@ -1,127 +1,169 @@
 <div align="center">
 
-#  NIWNote Studio — Autonomous AI/ML Sketchnote & Viral Copy Engine
+<img src="assets/app_logo.png" alt="NIWNote Studio Logo" width="120" style="border-radius: 24px; box-shadow: 0 8px 24px rgba(0,255,136,0.25);" />
 
-**An end-to-end Multi-Agent AI system that autonomously discovers trending AI/ML breakthroughs, synthesizes a 5-page curriculum, renders realistic handwritten study carousels, and writes human-like social media launch copy.**
+# 📝 NIWNote Studio
+### Autonomous Multi-Agent AI Sketchnote & Educational Carousel Engine
+
+**Transform complex research papers and engineering breakthroughs into photorealistic, human-like handwritten study carousels & viral social media launch copy in seconds — at $0 cost.**
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-handwritten-note-agent.streamlit.app/)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-00FF88?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Gemini 3.x SDK](https://img.shields.io/badge/Google%20GenAI-Gemini%203.x-00FF88?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
-[![Pydantic v2](https://img.shields.io/badge/Pydantic-v2%20Structured%20Outputs-B6FF3C?style=flat-square)](https://docs.pydantic.dev/)
-[![Headless Chromium](https://img.shields.io/badge/Renderer-HTML%2FCSS%2FSVG%20to%20PNG-2DFFA8?style=flat-square&logo=googlechrome&logoColor=white)](https://pypi.org/project/html2image/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-white?style=flat-square)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-00FF88?style=for-the-badge&logo=python&logoColor=000000)](https://www.python.org/)
+[![Google GenAI SDK](https://img.shields.io/badge/Google%20GenAI-Gemini%203.x%20Flash-00FF88?style=for-the-badge&logo=google&logoColor=000000)](https://ai.google.dev/)
+[![Pydantic v2](https://img.shields.io/badge/Pydantic-v2%20Schema%20Validation-B6FF3C?style=for-the-badge&logo=pydantic&logoColor=000000)](https://docs.pydantic.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-white?style=for-the-badge)](LICENSE)
 
-[**Launch Live Studio Web App**](https://ai-handwritten-note-agent.streamlit.app/) • [**Architecture**](#-system-architecture) • [**Sample Output**](#-sample-handwritten-carousel-output) • [**Local Setup**](#-quick-start-local-installation)
+[**🚀 Launch Live Web Studio**](https://ai-handwritten-note-agent.streamlit.app/) • [**📘 Full Project Study Guide**](PROJECT_STUDY_GUIDE.md) • [**🏗️ Architecture**](#-system-architecture) • [**🎨 Themes Showcase**](#-4-handcrafted-sketchnote-themes) • [**⚡ Quick Start**](#-quick-start-local-setup)
 
 </div>
 
 ---
 
-## Overview
+## 💡 The Problem & The Solution
 
-Creating high-retention technical carousels for LinkedIn and Facebook typically requires hours of reading research papers, structuring a beginner-friendly curriculum, illustrating diagrams by hand, and crafting engaging copy.
-
-**NIWNote Studio** automates this entire workflow at **$0 cost** using a multi-agent pipeline:
-1. **Live Trend Discovery Agent (`trend_agent.py`):** Queries **HuggingFace Daily Papers** and **HackerNews Algolia APIs** in real time to identify high-velocity AI/ML topics.
-2. **Curriculum & Copywriter Agent (`note_generator.py`):** Uses **Google Gemini 3.x Flash** models with strict **Pydantic v2** schema validation to transform complex concepts into a cohesive **5, 10, or 30-page study guide** plus an authentic, human-toned social media caption.
-3. **Authentic Human Handwritten Sketchnote Studio (`note_generator.py`):** Embeds true **Sinhala + English handwriting fonts** (`FontoshanHandwrite`, `Caveat`, `Kalam`, `Maname`, `Yaldevi`) with inline SVG doodles, authentic marker highlighters, binder punch holes, scotch tape, and organic flow arrows across 4 curated styles:
-   - **2 Realistic Styles:** *Classic Ruled Notebook* (loose-leaf college paper, 3-ring binder punch holes, red margin line, ballpoint pen ink) and *Vintage Kraft Journal* (recycled brown paper, sepia graph grid, burnt orange ink, scotch-taped notes).
-   - **2 Digital Styles:** *iPad GoodNotes* (clean Apple Pencil tablet canvas with status bar and electric blue stylus ink) and *Notability Cyber Dark* (AMOLED slate with neon cyan & emerald glowing stylus ink).
-4. **Daylight macOS Responsive Studio (`app.py`):** A fully responsive UI optimized for Desktop, Tablet, and Mobile devices with live trend scanning, miniature visual previews, interactive touch-swipe slide inspector, one-click copyable captions, and GPU-accelerated client-side `.PNG` and `.ZIP` bundle export.
+| The Traditional Manual Way | The NIWNote Studio Way |
+|---|---|
+| ⏳ **6–8 hours** reading papers, drafting notes, and sketching diagrams in Figma/GoodNotes | ⚡ **Under 30 seconds** from real-time paper discovery to fully rendered slide deck |
+| 💸 **\$150–\$300** per carousel in freelance designer and copywriter fees | 🆓 **\$0 operational cost** using Google Gemini Free-Tier & client-side GPU rasterization |
+| 📉 Generic AI bullet summaries that look robotic and get scrolled past | 🎨 **Authentic human handwritten notes** with organic paper textures, marker highlights, and doodle diagrams |
+| 🗣️ Robotic machine translation that destroys technical context in local languages | 🇱🇰 **Sri Lankan University "Kuppi" Style** (`Sinhala_Mix`): English technical terms embedded in natural Sinhala |
 
 ---
 
-## Sample Handwritten Carousel Output
+## 📸 Sample Carousel Output
 
-Every run produces a **5-page progressive learning carousel** (`1000x1250px` per slide) engineered for maximum readability on mobile and desktop feeds:
+Every generation produces an ultra-sharp **5, 10, or 30-page educational carousel** (`1000x1250px` high-DPI aspect ratio), optimized for maximum viral reach on LinkedIn, Facebook, and Instagram:
 
-| Slide 01 — ENGLISH | Slide 02 — SINHALA MIX |
+<div align="center">
+
+| 📄 Page 01 — English Academic Mode | 📄 Page 02 — Sinhala-Mix "Kuppi" Mode |
 | :---: | :---: |
-| ![Sample Note Page 1](assets/note_page_1.png) | ![Sample Note Page 2](assets/note_page_2.png) |
+| <img src="assets/note_page_1.png" alt="Sample Note Page 1" width="460" /> | <img src="assets/note_page_2.png" alt="Sample Note Page 2" width="460" /> |
+| *Classic Ruled Notebook with Ballpoint Ink & Binder Holes* | *Bilingual Technical Teaching with Highlighter & Inline Doodles* |
+
+</div>
 
 ---
 
-## System Architecture
+## 🏗️ System Architecture
+
+NIWNote Studio is built on an end-to-end multi-agent pipeline designed for fault tolerance, zero hallucination, and instantaneous browser rendering:
 
 ```mermaid
-flowchart LR
-    subgraph Sources["1. Free Real-Time Sources"]
+flowchart TD
+    subgraph S1["1. Live Signal Discovery"]
         HF["HuggingFace Daily Papers API"]
         HN["HackerNews Algolia API"]
+        DEV["Dev.to Technical API"]
     end
 
-    subgraph Agents["2. Multi-Agent Gemini 3.x Core"]
+    subgraph S2["2. Multi-Agent LLM Core"]
         TA["Trend Discovery Agent<br/>(trend_agent.py)"]
-        CA["5-Page Curriculum & Copy Agent<br/>(note_generator.py)"]
-        FB["Dynamic Model Fallback Loop<br/>(Gemini 3.5 / 3.6 / 3.1 Flash)"]
+        CA["Curriculum & Batch Agent<br/>(note_generator.py)"]
+        FB["Dynamic Gemini Failover Engine<br/>(Auto-detects healthy 3.x / 2.5 Flash endpoints)"]
     end
 
-    subgraph Engine["3. Sketchnote Rendering Engine"]
-        PYD["Pydantic v2 Schema Validator<br/>(StudyCarouselResponse)"]
-        SVG["Zero-Drift CSS + Inline SVG<br/>Dot-Grid Notebook Renderer"]
-        CHR["Headless Chromium Engine<br/>(1000x1250px PNG x 5)"]
+    subgraph S3["3. Sketchnote Synthesis Engine"]
+        PYD["Pydantic v2 Schema Enforcement<br/>(StudyCarouselResponse)"]
+        SVG["Zero-Drift CSS & Inline SVG Doodles<br/>(FontoshanHandwrite Base64 Font)"]
+        THM["4 Curated Notebook Templates<br/>(Ruled, Kraft, iPad Stylus, Cyber Dark)"]
     end
 
-    subgraph Studio["4. Delivery Interfaces"]
-        WEB["NIWNote Studio Web UI<br/>(Streamlit Cloud + ZIP Export)"]
-        CLI["Interactive CLI Pipeline<br/>(main.py)"]
+    subgraph S4["4. Interactive Delivery & Export"]
+        UI["Daylight macOS Web Studio<br/>(app.py - Responsive Streamlit UI)"]
+        GPU["Client-Side GPU Rasterizer<br/>(html2canvas + JSZip Instant PNG Export)"]
+        CLI["Headless Chromium Automation<br/>(main.py - CLI Pipeline)"]
     end
 
-    HF & HN --> TA
+    HF & HN & DEV --> TA
     TA --> CA
     FB <--> TA & CA
-    CA --> PYD --> SVG --> CHR
-    CHR --> WEB & CLI
+    CA --> PYD --> SVG --> THM
+    THM --> UI
+    UI --> GPU
+    THM --> CLI
 ```
 
 ---
 
-## Key Engineering Highlights
+## ✨ Key Engineering Highlights
 
-### 1. Dynamic Gemini 3.x Discovery & High-Availability Failover
-Free-tier LLM endpoints frequently experience transient `503 UNAVAILABLE` traffic spikes or model deprecations. Instead of hardcoding a single model string, `get_working_models()` dynamically queries the active account's available models, filters out deprecated or non-text endpoints, prioritizes active **Gemini 3.x Flash** models, and automatically fails over across backup models on transient errors.
+### 1. 🔄 Multi-Tier Dynamic Gemini 3.x Failover
+Free-tier LLM endpoints often face transient `503 Service Unavailable` spikes or quota limits. Rather than hardcoding a fragile model string, NIWNote Studio dynamically introspects your API key's active models via `get_working_models()`, prioritizing high-throughput **Gemini 3.x Flash** and **Gemini 2.5 Flash** models with automatic silent failovers.
 
-### 2. Zero-Drift CSS + Inline SVG Sketchnote Rendering
-Traditional JavaScript `getBoundingClientRect()` canvas overlays suffer from vertical coordinate drift when web fonts (`Kalam`, `Noto Sans Sinhala`) load asynchronously or when highlighted phrases wrap across lines.
-- **Solution:** Engineered a pure CSS + inline SVG Data-URI annotation system using `box-decoration-break: clone` and Chromium's `--virtual-time-budget=3500` deterministic paint flag.
-- **Result:** Yellow highlighter strokes (`<mark>`), hand-drawn red ink boxes (`<b>`), and curved blue ballpoint underlines (`<u>`) stay 100% locked to their target words across multi-line wraps in both English and Sinhala scripts.
+### 2. ⚡ Zero-Drift CSS + Inline SVG Sketchnote Renderer
+Standard canvas drawing libraries suffer from vertical drift when custom fonts load or text wraps across multiple lines. NIWNote Studio uses a pure CSS + Data-URI engine:
+- **`box-decoration-break: clone`**: Guarantees yellow highlighter ink (`<mark>`) and ballpoint underlines stay 100% pixel-locked to target phrases.
+- **Embedded Base64 Typography**: Packs `FontoshanHandwrite-Regular.ttf` and real paper textures directly into the HTML document, eliminating network font pop-in.
 
-### 3. Bilingual Technical Pedagogy (`Sinhala_Mix` & `English`)
-Supports two specialized instructional modes:
-- **Sinhala + English Technical Terms (`Sinhala_Mix`):** Natural conversational Sinhala explanations paired with industry-standard English AI/ML terminology (`RAG`, `Vector Database`, `Embeddings`, `Transformer`), making advanced AI accessible to Sri Lankan students and developers.
-- **Global English Mode (`English`):** 100% English technical sketchnotes for international LinkedIn/X audiences.
+### 3. 🚀 Zero-Server-RAM Client-Side GPU Exporter
+Headless Chrome screenshotting on cloud servers (Streamlit Cloud, AWS t2.micro) quickly triggers `Out-Of-Memory (OOM)` container crashes. NIWNote Studio offloads rendering to the **client browser** using `html2canvas` and `JSZip`:
+- All 5 to 30 slides are rasterized on the client's GPU in seconds.
+- Zipped and downloaded directly in-memory without putting any compute strain on the backend server.
 
-### 4. Typographic Glassmorphism Web Studio
-Built with a custom responsive design system featuring an obsidian grid canvas (`#020504`), neon emerald accents (`#00FF88`), `Space Grotesk` + `JetBrains Mono` typography, automatic workspace hydration, and in-memory `.ZIP` packaging for one-click downloads.
+### 4. 🇱🇰 Authentic Bilingual Technical Pedagogy (`Sinhala_Mix`)
+Solves the steep learning barrier for South Asian engineering students. Literal translation often mangles technical literature; NIWNote Studio uses the university **"Kuppi"** mental model:
+- Explanations are warm, intuitive, and conversational in Sinhala.
+- Crucial technical keywords (`Transformer`, `KV-Cache`, `LoRA`, `RAG`, `Vector DB`) remain strictly in English to preserve career and exam readiness.
 
 ---
 
-## Repository Structure
+## 🎨 4 Handcrafted Sketchnote Themes
+
+Choose from four distinct aesthetics engineered for maximum readability:
+
+| Theme | Category | Visual Highlights | Ideal For |
+|---|---|---|---|
+| 📓 **Classic Ruled Paper** | Realistic | High-res college ruled paper, 3 binder punch holes, vertical red margin, blue ballpoint pen | University exam study notes & revision guides |
+| 📜 **Engineering Quad Grid** | Realistic | Recycled brown kraft paper, sepia graph grid, scotch tape corners, burnt orange ink | Technical deep dives & architecture diagrams |
+| 📱 **iPad GoodNotes Stylus** | Digital | Crisp Apple tablet canvas, battery status bar, electric blue gel ink, modern minimalist layout | LinkedIn & Twitter tech carousels |
+| 💻 **Notability Cyber Dark** | Digital | AMOLED pitch slate (`#0d1117`), dot-matrix layout, glowing neon cyan & emerald stylus ink | Advanced coding, cybersecurity & AI systems |
+
+---
+
+## 🎓 8 University Engineering Tracks
+
+NIWNote Studio features built-in topic discovery and signal ranking across 8 major academic disciplines:
+1. 🤖 **AI & Machine Learning** (LLMs, RAG, Transformers, Model Optimization)
+2. 💻 **Software Engineering & Full-Stack** (System Design, Microservices, Event-Driven Architecture)
+3. 🛡️ **Cybersecurity & Ethical Hacking** (Zero-Trust, Cryptography, Penetration Testing)
+4. 📊 **Data Science & Big Data** (Spark, Feature Engineering, Vector Search)
+5. ☁️ **Cloud Computing & DevOps** (Kubernetes, Terraform, CI/CD, Serverless)
+6. 🌐 **Computer Networks & Distributed Systems** (TCP/IP, Consensus Algorithms, Edge Computing)
+7. 🤖 **IoT, Robotics & Embedded Systems** (ROS2, Edge AI, Microcontrollers)
+8. 🎨 **UI/UX & Product Engineering** (Design Systems, Micro-interactions, Accessibility)
+
+---
+
+## 📂 Repository Structure
 
 ```text
 AI_Note_Agent/
 ├── .streamlit/
-│   └── config.toml          # Studio configuration
+│   └── config.toml                  # Dark theme & UI layout configuration
 ├── assets/
-│   ├── FontoshanHandwrite-Regular.ttf # Authentic Sinhala + English handwriting font
-│   ├── note_page_1.png      # Sample rendered sketchnote slide 1
-│   └── note_page_2.png      # Sample rendered sketchnote slide 2
-├── app.py                   # Responsive Streamlit Web Studio application (Desktop / Tablet / Mobile)
-├── main.py                  # Interactive CLI orchestrator
-├── note_generator.py        # Gemini 3.x curriculum agent + 4 Handcrafted Templates & Client-Side GPU Renderer
-├── trend_agent.py           # Multi-track university topic discovery & signal ranking agent
-├── packages.txt             # Linux system dependencies (chromium, fonts-noto-core)
-├── requirements.txt         # Python package dependencies
-└── README.md                # Project documentation
+│   ├── app_logo.png                 # Studio brand emblem
+│   ├── FontoshanHandwrite-Regular.ttf # Embedded Sinhala + English handwriting font
+│   ├── note_page_1.png              # Showcase slide 1 (Ruled Paper)
+│   ├── note_page_2.png              # Showcase slide 2 (Bilingual Mix)
+│   ├── real_ruled_paper.jpg         # High-resolution photographic paper texture
+│   └── real_kraft_paper.jpg         # High-resolution kraft paper texture
+├── app.py                           # Daylight macOS Responsive Web Studio (Streamlit)
+├── main.py                          # Interactive CLI pipeline (Headless Chromium)
+├── note_generator.py                # Gemini 3.x curriculum agent & 4-theme CSS/SVG engine
+├── trend_agent.py                   # Multi-source live trend discovery & signal ranking
+├── packages.txt                     # Linux OS packages for Streamlit Cloud (Chromium & Fonts)
+├── requirements.txt                 # Python dependencies (google-genai, streamlit, pydantic)
+├── PROJECT_STUDY_GUIDE.md           # 📘 Exhaustive Technical Study Guide & Interview Q&A
+└── README.md                        # Project documentation
 ```
 
 ---
 
-## Quick Start (Local Installation)
+## ⚡ Quick Start (Local Setup)
 
 ### Prerequisites
 - **Python 3.11+**
-- **Google Chrome** or **Chromium** installed on your machine
 - A free **Google Gemini API Key** from [Google AI Studio](https://aistudio.google.com/)
 
 ### 1. Clone the Repository
@@ -130,39 +172,72 @@ git clone https://github.com/YourUsername/AI_Note_Agent.git
 cd AI_Note_Agent
 ```
 
-### 2. Install Dependencies
+### 2. Create Virtual Environment & Install Dependencies
 ```bash
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# macOS / Linux
+source venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment Variables
+### 3. Set Up Your API Key
 Create a `.env` file in the project root:
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=your_actual_gemini_api_key_here
 ```
 
-### 4. Launch the Web Studio (Recommended)
+### 4. Launch the Web Studio
 ```bash
 streamlit run app.py
 ```
-Open `http://localhost:8501` in your browser to access the **NIWNote Studio** workspace.
+Open [http://localhost:8501](http://localhost:8501) in your browser.
 
-### 5. Or Run the Interactive CLI
+### 5. Or Run via CLI
 ```bash
 python main.py
 ```
 
 ---
 
-## Cloud Deployment (Streamlit Community Cloud)
+## ☁️ Zero-Cost Cloud Deployment
 
-This repository is pre-configured for zero-cost hosting on **Streamlit Community Cloud**:
-1. `packages.txt` automatically provisions headless `chromium`, `chromium-driver`, and `fonts-noto-core` on the Linux container.
-2. `.streamlit/config.toml` enforces the **Green x Black** institutional dark theme.
-3. Add `GEMINI_API_KEY = "your_key"` in your Streamlit Cloud **App Settings -> Secrets** panel and deploy `app.py`.
+Deploy your own live instance of NIWNote Studio in 2 minutes for free on **Streamlit Community Cloud**:
+1. Push your code to a private or public GitHub repository.
+2. Sign in to [share.streamlit.io](https://share.streamlit.io) and select your repository.
+3. Set the main file path to `app.py`.
+4. Under **App Settings -> Secrets**, add:
+   ```toml
+   GEMINI_API_KEY = "your_gemini_api_key"
+   ```
+5. Click **Deploy!** `packages.txt` will automatically provision headless Chromium and Sinhala fonts on the Linux container.
 
 ---
 
-## License
+## 📘 Comprehensive Study Guide & Interview Prep
 
-Distributed under the **MIT License**. Feel free to fork, customize, and build upon this agent pipeline.
+Preparing for an AI Engineering or Full-Stack portfolio review? Check out our dedicated study guide:
+
+👉 [**Read the Full Project Study Guide (`PROJECT_STUDY_GUIDE.md`)**](PROJECT_STUDY_GUIDE.md)
+
+**Topics covered in the Study Guide:**
+- File-by-file code walkthrough and design pattern breakdown
+- Token-budget prompt engineering & anti-placeholder logic
+- Real-time `ThreadPoolExecutor` parallel scraping mechanics
+- 5 high-impact technical interview questions with architectural answers
+
+---
+
+## 🛡️ License
+
+This project is licensed under the **MIT License** — feel free to fork, customize, and build commercial or educational products on top of it.
+
+---
+
+<div align="center">
+Made with ❤️ for AI researchers, educators, and university students.
+</div>
